@@ -2,11 +2,10 @@
 This is a Snowflake Cortex demo leveraging transcript data.
 
 ## Set Up
-
-1. You will want to upload 'customer_support_calls.json' into the internal stage CORTEX > TRANSCRIPTS > Stages > TRANSCRIPTS
-2. Navigate to the above stage, Click on the "+ Files" blue button in the top right
-3. Drag and drop OR browse to the file 'customer_support_calls.json' and Click on the "Upload" button
-4. Navigate to CORTEX > TRANSCRIPTS > Tables and click on the "Create" Button > Table > From File > "Add from Stage"
+### You will want to upload 'customer_support_calls.json' into the internal stage CORTEX > TRANSCRIPTS > Stages > TRANSCRIPTS
+1. Navigate to the above stage, Click on the "+ Files" blue button in the top right
+2. Drag and drop OR browse to the file 'customer_support_calls.json' and Click on the "Upload" button
+3. Navigate to CORTEX > TRANSCRIPTS > Tables and click on the "Create" Button > Table > From File > "Add from Stage"
    
 OMI_CORTEX_CALL_TRANSCRIPT_DEMO.ipynb
 
