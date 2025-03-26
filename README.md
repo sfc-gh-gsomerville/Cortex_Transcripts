@@ -1,16 +1,11 @@
 # Cortex Transcripts Demo
-This is a Snowflake Cortex demo leveraging transcript data.
-
+This is a Snowflake Cortex demo leveraging transcript data.  The data was originally generated using ChatGPT 4.0.  The notbook contains the promt that was used to create the data set.
 ## Set Up
-### You will want to upload 'customer_support_calls.json' into the internal stage CORTEX > TRANSCRIPTS > Stages > TRANSCRIPTS
-1. Navigate to the above stage, Click on the "+ Files" blue button in the top right
-2. Drag and drop OR browse to the file 'customer_support_calls.json' and Click on the "Upload" button
-3. Navigate to CORTEX > TRANSCRIPTS > Tables and click on the "Create" Button > Table > From File > "Add from Stage"
-   
-OMI_CORTEX_CALL_TRANSCRIPT_DEMO.ipynb
-
-### SQL to set up the role "CORTEX_DEMO_ROLE" and warehouse "CORTEX_DEMO_WH" that will be able to interact with the demo
-
+### 1. Download the following files from this repo to your local computer
+1. CORTEX_CALL_TRANSCRIPT_DEMO.ipynb
+2. customer_support_calls.json
+### 2. Run the SQL script below to set up the role "CORTEX_DEMO_ROLE" and warehouse "CORTEX_DEMO_WH" that will be able to interact with the demo
+(NOTE:  You can copy this SQL and execute it in a Snowflake worksheet in Snowsight)
 ```SQL
 USE ROLE ACCOUNTADMIN;
 
@@ -42,12 +37,23 @@ GRANT SELECT ON FUTURE TABLES IN SCHEMA CORTEX.TRANSCRIPTS TO ROLE CORTEX_DEMO_R
 GRANT SELECT ON FUTURE DYNAMIC TABLES IN SCHEMA CORTEX.TRANSCRIPTS TO ROLE CORTEX_DEMO_ROLE;
 GRANT SELECT ON FUTURE VIEWS IN SCHEMA CORTEX.TRANSCRIPTS TO ROLE CORTEX_DEMO_ROLE;
 
-
-
 GRANT ROLE CORTEX_DEMO_ROLE TO USER <'Your User name'>;
 ```
+### 3. Loading the Transcript Data into Snowflake
+1. In Snowsight, navigate to the database and schema CORTEX.TRANSCRIPTS then to the stage TRANSCRIPTS
+2. Navigate to the above stage, Click on the "+ Files" blue button in the top right
+3. Drag and drop OR browse to the file 'customer_support_calls.json' and Click on the "Upload" button
+4. Once the file has been uploaded, click on the ellipses > Load into Table
+5. Keep the "+ Create new table" selected and under "Name" type "TRANSCRIPTS_RAW_JSON" then click "Next"
+6. Since this file is already a JSON file, and we reference the column "variant_col" click "Load"
+7.  Click "Done", Unless you want to open a worksheet and query the data in your new table. 
 
-### Streamlit-in-Snowflake Application
+### 4. Loading the Notebook file into Snowflake
+1. In Snowsight, on the Left Side menu pane, Select Projects > Notebooks
+2. In the upper right corner of the Notebooks space, there is a blue button with "+ Notebooks | ⌄ "
+3. Click on the "⌄" > "Import .ipynb file" and select "CORTEX_CALL_TRANSCRIPT_DEMO.ipynb" from where ever you downloaded it in step 1 above
+
+### 5. Creating a Streamlit-in-Snowflake (SiS) Application
 Below is the code that you will need to paste into a new SiS application within Snowflake.  In addition to pasting this code into the edit pane within SiS, you will also want to make sure you have the correct python packages available.
 ``` Python
 # Import python packages
