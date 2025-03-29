@@ -1,3 +1,5 @@
+--  This was the initial SQL script that did not work.  With Cortex Complte you are not able to return beyond ~8,000 tokens. 100 transcript records would exceed that number of tokens so the query with Cortex complete creates the first 2-3 records and then stops.
+
 CREATE TABLE CORTEX.TRANSCRIPTS.AGENTS (
     ID INT AUTOINCREMENT PRIMARY KEY,
     Name STRING
