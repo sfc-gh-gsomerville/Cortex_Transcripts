@@ -224,16 +224,10 @@ DECLARE
     conversation_id INT;
     random_id INT;
 BEGIN
-    -- Generate a random ID that's guaranteed to be at least 1000
-    -- Ensure it's at least 1000 by starting with 1000 and adding a random number
-    random_id := 1000 + ABS(RANDOM()) % 999000;
+    -- Generate a random 4+ digit ID (between 1000 and 999999999)
+    random_id := 1000 + MOD(ABS(RANDOM()), 999999000);
     
-    -- Make sure the ID is at least 1000 (failsafe)
-    IF random_id < 1000 THEN
-        random_id := random_id + 1000;
-    END IF;
-    
-    -- Step 1: Insert a new record in SUPPORT_CONVERSATIONS_ADD_RECORDS with the random ID
+    -- Step 1: Insert a new record in SUPPORT_CONVERSATIONS_ADD_RECORDS with the custom ID
     INSERT INTO Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS (
         CONVERSATION_ID,
         START_TIME,
@@ -247,6 +241,7 @@ BEGIN
     )
     WITH random_data AS (
         SELECT
+            -- Use our generated random ID
             :random_id AS CONVERSATION_ID,
             -- Random timestamp within the last 30 days for start time
             DATEADD(minute, -1 * MOD(ABS(RANDOM()), 43200), CURRENT_TIMESTAMP()) AS START_TIME,
@@ -284,7 +279,7 @@ BEGIN
     JOIN 
         Cursor_Demo.V1.HOME_MEDICAL_DEVICES hmd ON hmd.DEVICE_ID = rd.RANDOM_DEVICE_ID;
     
-    -- Set the conversation_id variable to the random ID for later use
+    -- Store the conversation ID
     conversation_id := random_id;
     
     -- Step 2: Call the GENERATE_TRANSCRIPTS_ADD_RECORDS procedure
@@ -320,7 +315,7 @@ BEGIN
     TRUNCATE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS;
     TRUNCATE TABLE Cursor_Demo.DATA_PREP.support_conv_initial;
     
-    -- Return success message with the conversation ID that was used
+    -- Return success message
     result := 'Successfully processed new conversation: ' || conversation_id || 
               '. ' || generate_transcript_result || 
               '. ' || export_json_result || 
