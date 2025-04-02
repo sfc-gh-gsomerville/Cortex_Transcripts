@@ -185,7 +185,8 @@ WITH random_data AS (
         -- Random agent ID between 1 and 8
         1 + MOD(ABS(RANDOM()), 8) AS AGENT_ID,
         -- Sequential customer IDs from 1 to 100
-        ROW_NUMBER() OVER (ORDER BY SEQ8()) AS CUSTOMER_ID,
+        --ROW_NUMBER() OVER (ORDER BY SEQ8()) AS CUSTOMER_ID, -->  This was the original code the breaks beyond row ID > 111
+        1 + MOD(ABS(RANDOM()), 100) AS CUSTOMER_ID, --Needed to update this so that is chose between 1 and 100 and wasn't dependent up on the row ID
         -- Random sentiment (positive, negative, neutral)
         CASE MOD(ABS(RANDOM()), 3)
             WHEN 0 THEN 'positive'
