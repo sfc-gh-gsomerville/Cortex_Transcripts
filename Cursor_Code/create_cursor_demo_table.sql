@@ -344,9 +344,9 @@ SELECT * FROM CURSOR_DEMO.Data_Prep.support_conv_initial LIMIT 10;
 CREATE OR REPLACE STAGE CURSOR_DEMO.Data_Prep.Call_data_initial;
 
 --Creating the JSON File of the Transcript Data
-COPY INTO @CURSOR_DEMO.Data_Prep.raw_data_json_stage/support_conv_raw.json 
+COPY INTO @CURSOR_DEMO.Data_Prep.Call_data_initial/support_conv_initial.json 
 FROM (
     SELECT OBJECT_CONSTRUCT('conversation_id', CONVERSATION_ID, 'start_time', START_TIME, 'end_time', END_TIME, 'agent_name', AGENT_NAME, 'customer_name', CUSTOMER_NAME, 'transcript', TRANSCRIPT) 
-    FROM CURSOR_DEMO.V1.SUPPORT_CONV_RAW) FILE_FORMAT = (TYPE = JSON) 
+    FROM CURSOR_DEMO.Data_Prep.support_conv_initial) FILE_FORMAT = (TYPE = JSON) 
     OVERWRITE = TRUE
 ;

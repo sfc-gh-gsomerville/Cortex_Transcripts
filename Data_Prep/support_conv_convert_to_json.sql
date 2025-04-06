@@ -3,15 +3,43 @@
 -- Create DATA_PREP schema in Cursor_Demo if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS Cursor_Demo.DATA_PREP;
 
+--Adding the data generated in the initial sql script for the data that will be used in the Cortex & SiS Demonstration
+-- Create support_conv_initial table in the DATA_PREP schema from the data generated in the table SUPPORT_CONVERSATIONS as a CTAS
+CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.support_conv_initial AS
+SELECT 
+    CONVERSATION_ID,
+    START_TIME,
+    END_TIME,
+    sa.AGENT_NAME AS AGENT_NAME,
+    c.CUSTOMER_NAME AS CUSTOMER_NAME,
+    TRANSCRIPT
+FROM 
+    Cursor_Demo.V1.SUPPORT_CONVERSATIONS sc
+    LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS sa ON sa.AGENT_ID = sc.AGENT_ID
+    LEFT JOIN Cursor_Demo.V1.CUSTOMERS c ON c.CUSTOMER_ID = sc.CUSTOMER_ID  
+;
+
+-- Create a stage in the DATA_PREP schema for storing the JSON file created form the initial transcript data
+CREATE OR REPLACE STAGE Cursor_Demo.DATA_PREP.call_data_initial;
+
+--Creating the JSON File of them initial Transcript Data created
+COPY INTO @CURSOR_DEMO.data_prep.call_data_initial/support_conv_initial.json 
+FROM (
+    SELECT OBJECT_CONSTRUCT('conversation_id', CONVERSATION_ID, 'start_time', START_TIME, 'end_time', END_TIME, 'agent_name', AGENT_NAME, 'customer_name', CUSTOMER_NAME, 'transcript', TRANSCRIPT) 
+    FROM CURSOR_DEMO.DATA_PREP.support_conv_initial) FILE_FORMAT = (TYPE = JSON) 
+    OVERWRITE = TRUE
+;
+
+--Now we will create a data pipeline to generate new transcripts and export them to separate JSON files to create an ingestion pipeline
 -- Create file format for JSON data
 CREATE OR REPLACE FILE FORMAT Cursor_Demo.DATA_PREP.json_format
   TYPE = JSON;
 
 -- Create a stage in the DATA_PREP schema for storing call data
-CREATE OR REPLACE STAGE Cursor_Demo.DATA_PREP.call_data_stage;
+CREATE OR REPLACE STAGE Cursor_Demo.DATA_PREP.call_data_new;
 
 -- Create transcript table in the DATA_PREP schema
-CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS (
+CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
     CONVERSATION_ID INT AUTOINCREMENT PRIMARY KEY,
     START_TIME TIMESTAMP_NTZ,
     END_TIME TIMESTAMP_NTZ,
@@ -26,57 +54,8 @@ CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS 
     FOREIGN KEY (CUSTOMER_ID) REFERENCES Cursor_Demo.V1.CUSTOMERS(CUSTOMER_ID)
 );
 
--- Alternative approach: First insert the basic data without transcripts, then update with transcripts
--- Step 1: Insert basic conversation details
-INSERT INTO Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS (
-    START_TIME,
-    END_TIME,
-    AGENT_ID,
-    CUSTOMER_ID,
-    SENTIMENT,
-    ISSUE_RESOLVED,
-    DEVICE_NAME,
-    COMMON_ISSUE
-)
-WITH random_data AS (
-    SELECT
-        -- Random timestamp within the last 30 days for start time
-        DATEADD(minute, -1 * MOD(ABS(RANDOM()), 43200), CURRENT_TIMESTAMP()) AS START_TIME,
-        -- End time between 2 and 20 minutes after start time
-        DATEADD(minute, 2 + MOD(ABS(RANDOM()), 18), START_TIME) AS END_TIME,
-        -- Random agent ID between 1 and 8
-        1 + MOD(ABS(RANDOM()), 8) AS AGENT_ID,
-        -- Sequential customer IDs from 1 to 100
-        1 + MOD(ABS(RANDOM()), 100) AS CUSTOMER_ID, --Needed to update this so that is chose between 1 and 100 and wasn't dependent up on the row ID
-        -- Random sentiment (positive, negative, neutral)
-        CASE MOD(ABS(RANDOM()), 3)
-            WHEN 0 THEN 'positive'
-            WHEN 1 THEN 'negative'
-            ELSE 'neutral'
-        END AS SENTIMENT,
-        -- Random resolution status (70% resolved, 30% unresolved)
-        CASE WHEN RANDOM() < 0.7 THEN TRUE ELSE FALSE END AS ISSUE_RESOLVED,
-        -- Random device ID between 1 and 50 - same value used for both fields
-        1 + MOD(ABS(RANDOM()), 50) AS RANDOM_DEVICE_ID
-    FROM 
-        TABLE(GENERATOR(ROWCOUNT => 1))
-)
-SELECT
-    rd.START_TIME,
-    rd.END_TIME,
-    rd.AGENT_ID,
-    rd.CUSTOMER_ID,
-    rd.SENTIMENT,
-    rd.ISSUE_RESOLVED,
-    hmd.DEVICE_NAME,
-    hmd.COMMON_ISSUES AS COMMON_ISSUE
-FROM 
-    random_data rd
-JOIN 
-    Cursor_Demo.V1.HOME_MEDICAL_DEVICES hmd ON hmd.DEVICE_ID = rd.RANDOM_DEVICE_ID;
-
--- Step 2: Create a new procedure to generate transcripts for the SUPPORT_CONVERSATIONS_ADD_RECORDS table
-CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_ADD_RECORDS()
+-- Create a new procedure to generate transcripts for the SUPPORT_CONVERSATIONS_NEW table
+CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS()
 RETURNS VARCHAR
 LANGUAGE SQL
 AS
@@ -90,7 +69,7 @@ DECLARE
         A.AGENT_NAME,
         SC.DEVICE_NAME,
         SC.COMMON_ISSUE
-    FROM Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS SC
+    FROM Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW SC
     JOIN Cursor_Demo.V1.CUSTOMERS C ON SC.CUSTOMER_ID = C.CUSTOMER_ID
     JOIN Cursor_Demo.V1.SUPPORT_AGENTS A ON SC.AGENT_ID = A.AGENT_ID
     WHERE TRANSCRIPT IS NULL;
@@ -134,7 +113,7 @@ BEGIN
         transcript := SNOWFLAKE.CORTEX.COMPLETE('CLAUDE-3-5-SONNET', prompt);
         
         -- Update the record with the generated transcript
-        UPDATE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS 
+        UPDATE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW 
         SET TRANSCRIPT = :transcript
         WHERE CONVERSATION_ID = :curr_conversation_id;
         
@@ -147,23 +126,7 @@ END;
 $$;
 
 -- Call the procedure to generate transcripts
-CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_ADD_RECORDS();
-
-
--- Create support_conv_initial table in the DATA_PREP schema
-CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.support_conv_initial AS
-SELECT 
-    CONVERSATION_ID,
-    START_TIME,
-    END_TIME,
-    sa.AGENT_NAME AS AGENT_NAME,
-    c.CUSTOMER_NAME AS CUSTOMER_NAME,
-    TRANSCRIPT
-FROM 
-    Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS sc
-    LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS sa ON sa.AGENT_ID = sc.AGENT_ID
-    LEFT JOIN Cursor_Demo.V1.CUSTOMERS c ON c.CUSTOMER_ID = sc.CUSTOMER_ID  
-;
+CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS();
 
 -- Create a procedure to export conversation data to a JSON file with a timestamp in the filename
 CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON()
@@ -184,17 +147,19 @@ BEGIN
     -- Create a temporary table with the data in JSON format
     CREATE OR REPLACE TEMPORARY TABLE temp_json_data AS
     SELECT OBJECT_CONSTRUCT(
-        'CONVERSATION_ID', CONVERSATION_ID,
-        'START_TIME', START_TIME,
-        'END_TIME', END_TIME,
-        'AGENT_NAME', AGENT_NAME,
-        'CUSTOMER_NAME', CUSTOMER_NAME,
-        'TRANSCRIPT', TRANSCRIPT
+        'CONVERSATION_ID', SC.CONVERSATION_ID,
+        'START_TIME', SC.START_TIME,
+        'END_TIME', SC.END_TIME,
+        'AGENT_NAME', SA.AGENT_NAME,
+        'CUSTOMER_NAME', C.CUSTOMER_NAME,
+        'TRANSCRIPT', SC.TRANSCRIPT
     ) AS json_data
-    FROM Cursor_Demo.DATA_PREP.support_conv_initial;
+    FROM Cursor_Demo.DATA_PREP.support_conversations_new SC
+    LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS SA ON SA.AGENT_ID = SC.AGENT_ID
+    LEFT JOIN Cursor_Demo.V1.CUSTOMERS C ON C.CUSTOMER_ID = SC.CUSTOMER_ID;
     
     -- Convert the rows to a JSON array
-    query_text := 'COPY INTO @Cursor_Demo.DATA_PREP.call_data_stage/' || filename || ' 
+    query_text := 'COPY INTO @Cursor_Demo.DATA_PREP.call_data_new/' || filename || ' 
     FROM (SELECT ARRAY_AGG(json_data) FROM temp_json_data)
     FILE_FORMAT = (FORMAT_NAME = ''Cursor_Demo.DATA_PREP.json_format'')
     OVERWRITE = TRUE;';
@@ -227,8 +192,8 @@ BEGIN
     -- Generate a random 4+ digit ID (between 1000 and 999999999)
     random_id := 1000 + MOD(ABS(RANDOM()), 999999000);
     
-    -- Step 1: Insert a new record in SUPPORT_CONVERSATIONS_ADD_RECORDS with the custom ID
-    INSERT INTO Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS (
+    -- Step 1: Insert a new record in SUPPORT_CONVERSATIONS_NEW with the custom ID
+    INSERT INTO Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
         CONVERSATION_ID,
         START_TIME,
         END_TIME,
@@ -283,37 +248,13 @@ BEGIN
     conversation_id := random_id;
     
     -- Step 2: Call the GENERATE_TRANSCRIPTS_ADD_RECORDS procedure
-    generate_transcript_result := (CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_ADD_RECORDS());
-    
-    -- Step 3: Insert the new record into SUPPORT_CONV_INITIAL
-    INSERT INTO Cursor_Demo.DATA_PREP.support_conv_initial (
-        CONVERSATION_ID,
-        START_TIME,
-        END_TIME,
-        AGENT_NAME,
-        CUSTOMER_NAME,
-        TRANSCRIPT
-    )
-    SELECT 
-        sc.CONVERSATION_ID,
-        sc.START_TIME,
-        sc.END_TIME,
-        sa.AGENT_NAME AS AGENT_NAME,
-        c.CUSTOMER_NAME AS CUSTOMER_NAME,
-        sc.TRANSCRIPT
-    FROM 
-        Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS sc
-        LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS sa ON sa.AGENT_ID = sc.AGENT_ID
-        LEFT JOIN Cursor_Demo.V1.CUSTOMERS c ON c.CUSTOMER_ID = sc.CUSTOMER_ID
-    WHERE 
-        sc.CONVERSATION_ID = :conversation_id;
-    
-    -- Step 4: Call the EXPORT_CONVERSATIONS_TO_JSON procedure
+    generate_transcript_result := (CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS());
+           
+    -- Step 3: Call the EXPORT_CONVERSATIONS_TO_JSON procedure
     export_json_result := (CALL Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON());
     
-    -- Step 5: Truncate both tables
-    TRUNCATE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_ADD_RECORDS;
-    TRUNCATE TABLE Cursor_Demo.DATA_PREP.support_conv_initial;
+    -- Step 4: Truncate both tables
+    TRUNCATE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW;
     
     -- Return success message
     result := 'Successfully processed new conversation: ' || conversation_id || 
