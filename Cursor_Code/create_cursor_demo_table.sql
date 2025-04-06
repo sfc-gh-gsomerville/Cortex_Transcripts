@@ -306,16 +306,47 @@ FROM
     LEFT JOIN Cursor_Demo.V1.CUSTOMERS c ON c.CUSTOMER_ID = sc.CUSTOMER_ID   
 LIMIT 10;
 
--- Query to see the top medical devices
-SELECT 
-    DEVICE_ID,
-    DEVICE_NAME,
-    CATEGORY,
-    SUBCATEGORY,
-    REQUIRES_PRESCRIPTION,
-    TYPICAL_INSURANCE_COVERAGE,
-    AVERAGE_LIFESPAN_MONTHS
-FROM 
-    Cursor_Demo.V1.HOME_MEDICAL_DEVICES
-ORDER BY CATEGORY, SUBCATEGORY
-LIMIT 10;
+-- Createing a Table of the Transcripts to be used for the Cortex Demo
+CREATE OR REPLACE TABLE CURSOR_DEMO.Data_Prep.support_conv_initial(
+    CONVERSATION_ID INT ,
+    START_TIME TIMESTAMP_NTZ,
+    END_TIME TIMESTAMP_NTZ,
+    AGENT_NAME VARCHAR(100),
+    CUSTOMER_NAME VARCHAR(100),
+    TRANSCRIPT VARCHAR(20000)
+    );
+
+-- Insert the transcripts into the new table
+INSERT INTO CURSOR_DEMO.Data_Prep.support_conv_initial (
+    CONVERSATION_ID,
+    START_TIME,
+    END_TIME,
+    AGENT_NAME,
+    CUSTOMER_NAME,
+    TRANSCRIPT)
+    SELECT 
+        CONVERSATION_ID,
+        START_TIME,
+        END_TIME,
+        sa.AGENT_NAME AS AGENT_NAME,
+        c.CUSTOMER_NAME AS CUSTOMER_NAME,
+        TRANSCRIPT
+    FROM 
+        Cursor_Demo.V1.SUPPORT_CONVERSATIONS sc
+        LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS sa ON sa.AGENT_ID = sc.AGENT_ID
+        LEFT JOIN Cursor_Demo.V1.CUSTOMERS c ON c.CUSTOMER_ID = sc.CUSTOMER_ID
+    ;
+
+--View the data in the new table
+SELECT * FROM CURSOR_DEMO.Data_Prep.support_conv_initial LIMIT 10;
+
+--Create a new stage in the Data_Prep Schema for the initial data in the support_conv_initial table
+CREATE OR REPLACE STAGE CURSOR_DEMO.Data_Prep.Call_data_initial;
+
+--Creating the JSON File of the Transcript Data
+COPY INTO @CURSOR_DEMO.Data_Prep.raw_data_json_stage/support_conv_raw.json 
+FROM (
+    SELECT OBJECT_CONSTRUCT('conversation_id', CONVERSATION_ID, 'start_time', START_TIME, 'end_time', END_TIME, 'agent_name', AGENT_NAME, 'customer_name', CUSTOMER_NAME, 'transcript', TRANSCRIPT) 
+    FROM CURSOR_DEMO.V1.SUPPORT_CONV_RAW) FILE_FORMAT = (TYPE = JSON) 
+    OVERWRITE = TRUE
+;
