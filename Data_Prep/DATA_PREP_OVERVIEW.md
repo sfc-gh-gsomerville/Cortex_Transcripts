@@ -11,7 +11,7 @@ The `support_conv_convert_to_json.sql` script creates a data processing pipeline
 3. Creates tables for conversation data
 4. Generates realistic support conversation transcripts using Claude AI
 5. Exports the conversations to JSON files with timestamps in the filenames
-6. Provides a complete end-to-end procedure for processing new conversations
+6. Provides a complete end-to-end procedure for processing new conversations, including batch processing
 
 ## Components
 
@@ -53,7 +53,6 @@ The `support_conv_convert_to_json.sql` script creates a data processing pipeline
    - Returns success information with the filename
 
 3. **PROCESS_NEW_CONVERSATION**:
-   - Orchestrates the complete conversation processing pipeline:
    - Generates a unique 4+ digit conversation ID
    - Creates a new random conversation record
    - Calls transcript generation procedure
@@ -62,14 +61,34 @@ The `support_conv_convert_to_json.sql` script creates a data processing pipeline
    - Truncates tables to prepare for the next run
    - Returns status information for the complete process
 
+4. **PROCESS_CONVERSATIONS_BATCH**:
+   - Enhanced version that processes multiple conversations in a single call
+   - Accepts a parameter for the number of executions (default: 3)
+   - Uses a REPEAT-UNTIL loop to execute the conversation generation process multiple times
+   - Tracks results from all executions in an array
+   - Returns a consolidated summary of all processed conversations
+   - Automatically truncates tables after each execution
+
 ## Usage
 
-To process a new customer support conversation:
+To process a single customer support conversation:
 
 ```sql
 CALL Cursor_Demo.DATA_PREP.PROCESS_NEW_CONVERSATION();
 ```
 
-This will generate a complete conversation with a random customer, agent, and medical device issue, generate a realistic transcript using Claude AI, export it to a timestamped JSON file, and clean up the tables afterward.
+To process multiple conversations in a batch (default is 3):
+
+```sql
+CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH();
+```
+
+To specify a custom number of conversations to process:
+
+```sql
+CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(5);
+```
+
+Each execution will generate a complete conversation with a random customer, agent, and medical device issue, generate a realistic transcript using Claude AI, export it to a timestamped JSON file, and clean up the tables afterward.
 
 The resulting JSON files are stored in the `Cursor_Demo.DATA_PREP.call_data_stage` and contain the conversation ID, timestamps, agent and customer names, and the full conversation transcript. 
