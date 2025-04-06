@@ -278,7 +278,7 @@ END;
 $$;
 
 -- Call the new procedure to process conversations (default 3 times)
-CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(1);
+CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH();
 
 -- Example with explicit execution count
 -- CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(5);

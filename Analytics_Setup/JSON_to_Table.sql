@@ -78,13 +78,13 @@ $$
         });
         resume_stmt.execute();
         
-        // Call the batch processing with 10 iterations
+        // Call the batch processing with 3 iterations
         var batch_stmt = snowflake.createStatement({
-            sqlText: "CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(10);"
+            sqlText: "CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(3);"
         });
         batch_stmt.execute();
         
-        // Add a 16 second delay using Snowflake's system$wait function
+        // Add a 16 second delay using Snowflake's system$wait function so that the last file created is loaded into the table
         var wait_stmt = snowflake.createStatement({
             sqlText: "CALL system$wait(16);"
         });
@@ -96,7 +96,7 @@ $$
         });
         suspend_stmt.execute();
         
-        return "Batch processing completed successfully: Task resumed, 10 batches processed, waited 16 seconds, then task suspended.";
+        return "Batch processing completed successfully: Task resumed, 3 batches processed, waited 16 seconds, then task suspended.";
     } catch (err) {
         return "Error during batch processing: " + err;
     }
