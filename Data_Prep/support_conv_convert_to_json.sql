@@ -177,7 +177,7 @@ $$;
 CALL Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON();
 
 -- Create a new procedure that performs the complete conversation processing pipeline
-CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.PROCESS_NEW_CONVERSATION()
+CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(NUM_EXECUTIONS INT DEFAULT 3)
 RETURNS VARCHAR
 LANGUAGE SQL
 AS
@@ -185,86 +185,101 @@ $$
 DECLARE
     generate_transcript_result VARCHAR;
     export_json_result VARCHAR;
-    result VARCHAR;
+    results_array ARRAY DEFAULT ARRAY_CONSTRUCT();
     conversation_id INT;
     random_id INT;
+    current_execution INT DEFAULT 1;
+    final_result VARCHAR;
 BEGIN
-    -- Generate a random 4+ digit ID (between 1000 and 999999999)
-    random_id := 1000 + MOD(ABS(RANDOM()), 999999000);
-    
-    -- Step 1: Insert a new record in SUPPORT_CONVERSATIONS_NEW with the custom ID
-    INSERT INTO Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
-        CONVERSATION_ID,
-        START_TIME,
-        END_TIME,
-        AGENT_ID,
-        CUSTOMER_ID,
-        SENTIMENT,
-        ISSUE_RESOLVED,
-        DEVICE_NAME,
-        COMMON_ISSUE
-    )
-    WITH random_data AS (
+    -- Recursive execution loop
+    REPEAT
+        -- Generate a random 4+ digit ID (between 1000 and 999999999)
+        random_id := 1000 + MOD(ABS(RANDOM()), 999999000);
+        
+        -- Step 1: Insert a new record in SUPPORT_CONVERSATIONS_NEW with the custom ID
+        INSERT INTO Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
+            CONVERSATION_ID,
+            START_TIME,
+            END_TIME,
+            AGENT_ID,
+            CUSTOMER_ID,
+            SENTIMENT,
+            ISSUE_RESOLVED,
+            DEVICE_NAME,
+            COMMON_ISSUE
+        )
+        WITH random_data AS (
+            SELECT
+                -- Use our generated random ID
+                :random_id AS CONVERSATION_ID,
+                -- Random timestamp within the last 30 days for start time
+                DATEADD(minute, -1 * MOD(ABS(RANDOM()), 43200), CURRENT_TIMESTAMP()) AS START_TIME,
+                -- End time between 2 and 20 minutes after start time
+                DATEADD(minute, 2 + MOD(ABS(RANDOM()), 18), START_TIME) AS END_TIME,
+                -- Random agent ID between 1 and 8
+                1 + MOD(ABS(RANDOM()), 8) AS AGENT_ID,
+                -- Sequential customer IDs from 1 to 100
+                1 + MOD(ABS(RANDOM()), 100) AS CUSTOMER_ID,
+                -- Random sentiment (positive, negative, neutral)
+                CASE MOD(ABS(RANDOM()), 3)
+                    WHEN 0 THEN 'positive'
+                    WHEN 1 THEN 'negative'
+                    ELSE 'neutral'
+                END AS SENTIMENT,
+                -- Random resolution status (70% resolved, 30% unresolved)
+                CASE WHEN RANDOM() < 0.7 THEN TRUE ELSE FALSE END AS ISSUE_RESOLVED,
+                -- Random device ID between 1 and 50
+                1 + MOD(ABS(RANDOM()), 50) AS RANDOM_DEVICE_ID
+            FROM 
+                TABLE(GENERATOR(ROWCOUNT => 1))
+        )
         SELECT
-            -- Use our generated random ID
-            :random_id AS CONVERSATION_ID,
-            -- Random timestamp within the last 30 days for start time
-            DATEADD(minute, -1 * MOD(ABS(RANDOM()), 43200), CURRENT_TIMESTAMP()) AS START_TIME,
-            -- End time between 2 and 20 minutes after start time
-            DATEADD(minute, 2 + MOD(ABS(RANDOM()), 18), START_TIME) AS END_TIME,
-            -- Random agent ID between 1 and 8
-            1 + MOD(ABS(RANDOM()), 8) AS AGENT_ID,
-            -- Sequential customer IDs from 1 to 100
-            1 + MOD(ABS(RANDOM()), 100) AS CUSTOMER_ID,
-            -- Random sentiment (positive, negative, neutral)
-            CASE MOD(ABS(RANDOM()), 3)
-                WHEN 0 THEN 'positive'
-                WHEN 1 THEN 'negative'
-                ELSE 'neutral'
-            END AS SENTIMENT,
-            -- Random resolution status (70% resolved, 30% unresolved)
-            CASE WHEN RANDOM() < 0.7 THEN TRUE ELSE FALSE END AS ISSUE_RESOLVED,
-            -- Random device ID between 1 and 50
-            1 + MOD(ABS(RANDOM()), 50) AS RANDOM_DEVICE_ID
+            rd.CONVERSATION_ID,
+            rd.START_TIME,
+            rd.END_TIME,
+            rd.AGENT_ID,
+            rd.CUSTOMER_ID,
+            rd.SENTIMENT,
+            rd.ISSUE_RESOLVED,
+            hmd.DEVICE_NAME,
+            hmd.COMMON_ISSUES AS COMMON_ISSUE
         FROM 
-            TABLE(GENERATOR(ROWCOUNT => 1))
-    )
-    SELECT
-        rd.CONVERSATION_ID,
-        rd.START_TIME,
-        rd.END_TIME,
-        rd.AGENT_ID,
-        rd.CUSTOMER_ID,
-        rd.SENTIMENT,
-        rd.ISSUE_RESOLVED,
-        hmd.DEVICE_NAME,
-        hmd.COMMON_ISSUES AS COMMON_ISSUE
-    FROM 
-        random_data rd
-    JOIN 
-        Cursor_Demo.V1.HOME_MEDICAL_DEVICES hmd ON hmd.DEVICE_ID = rd.RANDOM_DEVICE_ID;
+            random_data rd
+        JOIN 
+            Cursor_Demo.V1.HOME_MEDICAL_DEVICES hmd ON hmd.DEVICE_ID = rd.RANDOM_DEVICE_ID;
+        
+        -- Store the conversation ID
+        conversation_id := random_id;
+        
+        -- Step 2: Call the GENERATE_TRANSCRIPTS_ADD_RECORDS procedure
+        generate_transcript_result := (CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS());
+               
+        -- Step 3: Call the EXPORT_CONVERSATIONS_TO_JSON procedure
+        export_json_result := (CALL Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON());
+        
+        -- Step 4: Truncate both tables
+        TRUNCATE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW;
+        
+        -- Add result to the array
+        results_array := ARRAY_APPEND(:results_array, 'Execution ' || current_execution || ': Processed conversation ' || conversation_id);
+        
+        -- Increment execution counter
+        current_execution := current_execution + 1;
+        
+    UNTIL (current_execution > NUM_EXECUTIONS)
+    END REPEAT;
     
-    -- Store the conversation ID
-    conversation_id := random_id;
+    -- Build final result string from array
+    final_result := 'Successfully processed ' || NUM_EXECUTIONS || ' conversations.' || 
+                    CHR(10) || ARRAY_TO_STRING(results_array, CHR(10));
     
-    -- Step 2: Call the GENERATE_TRANSCRIPTS_ADD_RECORDS procedure
-    generate_transcript_result := (CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS());
-           
-    -- Step 3: Call the EXPORT_CONVERSATIONS_TO_JSON procedure
-    export_json_result := (CALL Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON());
-    
-    -- Step 4: Truncate both tables
-    TRUNCATE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW;
-    
-    -- Return success message
-    result := 'Successfully processed new conversation: ' || conversation_id || 
-              '. ' || generate_transcript_result || 
-              '. ' || export_json_result || 
-              '. Tables have been truncated.';
-    RETURN result;
+    RETURN final_result;
 END;
 $$;
 
--- Call the new procedure to process a conversation from start to finish
-CALL Cursor_Demo.DATA_PREP.PROCESS_NEW_CONVERSATION();
+-- Call the new procedure to process conversations (default 3 times)
+CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH();
+
+-- Example with explicit execution count
+-- CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(5);
 
