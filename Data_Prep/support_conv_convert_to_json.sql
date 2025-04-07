@@ -147,12 +147,12 @@ BEGIN
     -- Create a temporary table with the data in JSON format
     CREATE OR REPLACE TEMPORARY TABLE temp_json_data AS
     SELECT OBJECT_CONSTRUCT(
-        'CONVERSATION_ID', SC.CONVERSATION_ID,
-        'START_TIME', SC.START_TIME,
-        'END_TIME', SC.END_TIME,
-        'AGENT_NAME', SA.AGENT_NAME,
-        'CUSTOMER_NAME', C.CUSTOMER_NAME,
-        'TRANSCRIPT', SC.TRANSCRIPT
+        'conversation_id', SC.CONVERSATION_ID,
+        'start_time', SC.START_TIME,
+        'end_time', SC.END_TIME,
+        'agent_name', SA.AGENT_NAME,
+        'customer_name', C.CUSTOMER_NAME,
+        'transcript', SC.TRANSCRIPT
     ) AS json_data
     FROM Cursor_Demo.DATA_PREP.support_conversations_new SC
     LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS SA ON SA.AGENT_ID = SC.AGENT_ID
