@@ -17,7 +17,7 @@ The `support_conv_convert_to_json.sql` script creates a data processing pipeline
 
 ### Schema and Storage
 
-- **Schema**: Creates `Cursor_Demo.DATA_PREP` schema
+- **Schema**: Creates `MED_DEVICE_TRANSCRIPTS.DATA_PREP` schema
 - **File Format**: Defines JSON file format for data export
 - **Stage**: Sets up `call_data_stage` internal stage for storing JSON files
 
@@ -74,21 +74,21 @@ The `support_conv_convert_to_json.sql` script creates a data processing pipeline
 To process a single customer support conversation:
 
 ```sql
-CALL Cursor_Demo.DATA_PREP.PROCESS_NEW_CONVERSATION();
+CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.PROCESS_NEW_CONVERSATION();
 ```
 
 To process multiple conversations in a batch (default is 3):
 
 ```sql
-CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH();
+CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.PROCESS_CONVERSATIONS_BATCH();
 ```
 
 To specify a custom number of conversations to process:
 
 ```sql
-CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(5);
+CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(5);
 ```
 
 Each execution will generate a complete conversation with a random customer, agent, and medical device issue, generate a realistic transcript using Claude AI, export it to a timestamped JSON file, and clean up the tables afterward.
 
-The resulting JSON files are stored in the `Cursor_Demo.DATA_PREP.call_data_stage` and contain the conversation ID, timestamps, agent and customer names, and the full conversation transcript. 
+The resulting JSON files are stored in the `MED_DEVICE_TRANSCRIPTS.DATA_PREP.call_data_stage` and contain the conversation ID, timestamps, agent and customer names, and the full conversation transcript. 

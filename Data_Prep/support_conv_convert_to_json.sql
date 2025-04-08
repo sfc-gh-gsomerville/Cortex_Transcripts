@@ -1,11 +1,11 @@
 -- Reference SQL from create_cursor_demo_table.sql that was used to create and populate the SUPPORT_CONVERSATIONS table
 
--- Create DATA_PREP schema in Cursor_Demo if it doesn't exist
-CREATE SCHEMA IF NOT EXISTS Cursor_Demo.DATA_PREP;
+-- Create DATA_PREP schema in MED_DEVICE_TRANSCRIPTS if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS MED_DEVICE_TRANSCRIPTS.DATA_PREP;
 
 --Adding the data generated in the initial sql script for the data that will be used in the Cortex & SiS Demonstration
 -- Create support_conv_initial table in the DATA_PREP schema from the data generated in the table SUPPORT_CONVERSATIONS as a CTAS
-CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.support_conv_initial AS
+CREATE OR REPLACE TABLE MED_DEVICE_TRANSCRIPTS.DATA_PREP.support_conv_initial AS
 SELECT 
     CONVERSATION_ID,
     START_TIME,
@@ -14,32 +14,32 @@ SELECT
     c.CUSTOMER_NAME AS CUSTOMER_NAME,
     TRANSCRIPT
 FROM 
-    Cursor_Demo.V1.SUPPORT_CONVERSATIONS sc
-    LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS sa ON sa.AGENT_ID = sc.AGENT_ID
-    LEFT JOIN Cursor_Demo.V1.CUSTOMERS c ON c.CUSTOMER_ID = sc.CUSTOMER_ID  
+    MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.SUPPORT_CONVERSATIONS sc
+    LEFT JOIN MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.SUPPORT_AGENTS sa ON sa.AGENT_ID = sc.AGENT_ID
+    LEFT JOIN MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.CUSTOMERS c ON c.CUSTOMER_ID = sc.CUSTOMER_ID  
 ;
 
 -- Create a stage in the DATA_PREP schema for storing the JSON file created form the initial transcript data
-CREATE OR REPLACE STAGE Cursor_Demo.DATA_PREP.call_data_initial;
+CREATE OR REPLACE STAGE MED_DEVICE_TRANSCRIPTS.DATA_PREP.call_data_initial;
 
 --Creating the JSON File of them initial Transcript Data created
-COPY INTO @CURSOR_DEMO.data_prep.call_data_initial/support_conv_initial.json 
+COPY INTO @MED_DEVICE_TRANSCRIPTS.data_prep.call_data_initial/support_conv_initial.json 
 FROM (
     SELECT OBJECT_CONSTRUCT('conversation_id', CONVERSATION_ID, 'start_time', START_TIME, 'end_time', END_TIME, 'agent_name', AGENT_NAME, 'customer_name', CUSTOMER_NAME, 'transcript', TRANSCRIPT) 
-    FROM CURSOR_DEMO.DATA_PREP.support_conv_initial) FILE_FORMAT = (TYPE = JSON) 
+    FROM MED_DEVICE_TRANSCRIPTS.DATA_PREP.support_conv_initial) FILE_FORMAT = (TYPE = JSON) 
     OVERWRITE = TRUE
 ;
 
 --Now we will create a data pipeline to generate new transcripts and export them to separate JSON files to create an ingestion pipeline
 -- Create file format for JSON data
-CREATE OR REPLACE FILE FORMAT Cursor_Demo.DATA_PREP.json_format
+CREATE OR REPLACE FILE FORMAT MED_DEVICE_TRANSCRIPTS.DATA_PREP.json_format
   TYPE = JSON;
 
 -- Create a stage in the DATA_PREP schema for storing call data
-CREATE OR REPLACE STAGE Cursor_Demo.DATA_PREP.call_data_new;
+CREATE OR REPLACE STAGE MED_DEVICE_TRANSCRIPTS.DATA_PREP.call_data_new;
 
 -- Create transcript table in the DATA_PREP schema
-CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
+CREATE OR REPLACE TABLE MED_DEVICE_TRANSCRIPTS.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
     CONVERSATION_ID INT AUTOINCREMENT PRIMARY KEY,
     START_TIME TIMESTAMP_NTZ,
     END_TIME TIMESTAMP_NTZ,
@@ -50,12 +50,12 @@ CREATE OR REPLACE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
     DEVICE_NAME VARCHAR(100),
     COMMON_ISSUE VARCHAR(500),
     TRANSCRIPT VARCHAR(20000),
-    FOREIGN KEY (AGENT_ID) REFERENCES Cursor_Demo.V1.SUPPORT_AGENTS(AGENT_ID),
-    FOREIGN KEY (CUSTOMER_ID) REFERENCES Cursor_Demo.V1.CUSTOMERS(CUSTOMER_ID)
+    FOREIGN KEY (AGENT_ID) REFERENCES MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.SUPPORT_AGENTS(AGENT_ID),
+    FOREIGN KEY (CUSTOMER_ID) REFERENCES MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.CUSTOMERS(CUSTOMER_ID)
 );
 
 -- Create a new procedure to generate transcripts for the SUPPORT_CONVERSATIONS_NEW table
-CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS()
+CREATE OR REPLACE PROCEDURE MED_DEVICE_TRANSCRIPTS.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS()
 RETURNS VARCHAR
 LANGUAGE SQL
 AS
@@ -69,9 +69,9 @@ DECLARE
         A.AGENT_NAME,
         SC.DEVICE_NAME,
         SC.COMMON_ISSUE
-    FROM Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW SC
-    JOIN Cursor_Demo.V1.CUSTOMERS C ON SC.CUSTOMER_ID = C.CUSTOMER_ID
-    JOIN Cursor_Demo.V1.SUPPORT_AGENTS A ON SC.AGENT_ID = A.AGENT_ID
+    FROM MED_DEVICE_TRANSCRIPTS.DATA_PREP.SUPPORT_CONVERSATIONS_NEW SC
+    JOIN MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.CUSTOMERS C ON SC.CUSTOMER_ID = C.CUSTOMER_ID
+    JOIN MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.SUPPORT_AGENTS A ON SC.AGENT_ID = A.AGENT_ID
     WHERE TRANSCRIPT IS NULL;
     
     curr_conversation_id INTEGER;
@@ -113,7 +113,7 @@ BEGIN
         transcript := SNOWFLAKE.CORTEX.COMPLETE('CLAUDE-3-5-SONNET', prompt);
         
         -- Update the record with the generated transcript
-        UPDATE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW 
+        UPDATE MED_DEVICE_TRANSCRIPTS.DATA_PREP.SUPPORT_CONVERSATIONS_NEW 
         SET TRANSCRIPT = :transcript
         WHERE CONVERSATION_ID = :curr_conversation_id;
         
@@ -126,10 +126,10 @@ END;
 $$;
 
 -- Call the procedure to generate transcripts
-CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS();
+CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS();
 
 -- Create a procedure to export conversation data to a JSON file with a timestamp in the filename
-CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON()
+CREATE OR REPLACE PROCEDURE MED_DEVICE_TRANSCRIPTS.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON()
 RETURNS VARCHAR
 LANGUAGE SQL
 AS
@@ -154,14 +154,14 @@ BEGIN
         'customer_name', C.CUSTOMER_NAME,
         'transcript', SC.TRANSCRIPT
     ) AS json_data
-    FROM Cursor_Demo.DATA_PREP.support_conversations_new SC
-    LEFT JOIN Cursor_Demo.V1.SUPPORT_AGENTS SA ON SA.AGENT_ID = SC.AGENT_ID
-    LEFT JOIN Cursor_Demo.V1.CUSTOMERS C ON C.CUSTOMER_ID = SC.CUSTOMER_ID;
+    FROM MED_DEVICE_TRANSCRIPTS.DATA_PREP.support_conversations_new SC
+    LEFT JOIN MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.SUPPORT_AGENTS SA ON SA.AGENT_ID = SC.AGENT_ID
+    LEFT JOIN MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.CUSTOMERS C ON C.CUSTOMER_ID = SC.CUSTOMER_ID;
     
     -- Convert the rows to a JSON array
-    query_text := 'COPY INTO @Cursor_Demo.DATA_PREP.call_data_new/' || filename || ' 
+    query_text := 'COPY INTO @MED_DEVICE_TRANSCRIPTS.DATA_PREP.call_data_new/' || filename || ' 
     FROM (SELECT ARRAY_AGG(json_data) FROM temp_json_data)
-    FILE_FORMAT = (FORMAT_NAME = ''Cursor_Demo.DATA_PREP.json_format'')
+    FILE_FORMAT = (FORMAT_NAME = ''MED_DEVICE_TRANSCRIPTS.DATA_PREP.json_format'')
     OVERWRITE = TRUE;';
     
     -- Execute the copy command
@@ -174,10 +174,10 @@ END;
 $$;
 
 -- Call the procedure to export conversation data to a JSON file
-CALL Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON();
+CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON();
 
 -- Create a new procedure that performs the complete conversation processing pipeline
-CREATE OR REPLACE PROCEDURE Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(NUM_EXECUTIONS INT DEFAULT 3)
+CREATE OR REPLACE PROCEDURE MED_DEVICE_TRANSCRIPTS.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(NUM_EXECUTIONS INT DEFAULT 3)
 RETURNS VARCHAR
 LANGUAGE SQL
 AS
@@ -197,7 +197,7 @@ BEGIN
         random_id := 1000 + MOD(ABS(RANDOM()), 999999000);
         
         -- Step 1: Insert a new record in SUPPORT_CONVERSATIONS_NEW with the custom ID
-        INSERT INTO Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
+        INSERT INTO MED_DEVICE_TRANSCRIPTS.DATA_PREP.SUPPORT_CONVERSATIONS_NEW (
             CONVERSATION_ID,
             START_TIME,
             END_TIME,
@@ -246,19 +246,19 @@ BEGIN
         FROM 
             random_data rd
         JOIN 
-            Cursor_Demo.V1.HOME_MEDICAL_DEVICES hmd ON hmd.DEVICE_ID = rd.RANDOM_DEVICE_ID;
+            MED_DEVICE_TRANSCRIPTS.CREATE_TRANSCRIPTS.HOME_MEDICAL_DEVICES hmd ON hmd.DEVICE_ID = rd.RANDOM_DEVICE_ID;
         
         -- Store the conversation ID
         conversation_id := random_id;
         
         -- Step 2: Call the GENERATE_TRANSCRIPTS_ADD_RECORDS procedure
-        generate_transcript_result := (CALL Cursor_Demo.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS());
+        generate_transcript_result := (CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.GENERATE_TRANSCRIPTS_NEW_RECORDS());
                
         -- Step 3: Call the EXPORT_CONVERSATIONS_TO_JSON procedure
-        export_json_result := (CALL Cursor_Demo.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON());
+        export_json_result := (CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.EXPORT_CONVERSATIONS_TO_JSON());
         
         -- Step 4: Truncate both tables
-        TRUNCATE TABLE Cursor_Demo.DATA_PREP.SUPPORT_CONVERSATIONS_NEW;
+        TRUNCATE TABLE MED_DEVICE_TRANSCRIPTS.DATA_PREP.SUPPORT_CONVERSATIONS_NEW;
         
         -- Add result to the array
         results_array := ARRAY_APPEND(:results_array, 'Execution ' || current_execution || ': Processed conversation ' || conversation_id);
@@ -278,8 +278,8 @@ END;
 $$;
 
 -- Call the new procedure to process conversations (default 3 times)
-CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH();
+CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.PROCESS_CONVERSATIONS_BATCH();
 
 -- Example with explicit execution count
--- CALL Cursor_Demo.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(5);
+-- CALL MED_DEVICE_TRANSCRIPTS.DATA_PREP.PROCESS_CONVERSATIONS_BATCH(5);
 
