@@ -815,7 +815,7 @@ else:
                 
                 # Display records for selected date range
                 for idx, record in records_to_display.iterrows():
-                    with st.expander(f"{record.get('start_time', 'N/A').strftime('%Y-%m-%d %H:%M') if pd.notna(record.get('start_time')) else 'N/A'} - {record.get('agent_name', 'N/A')} - {record.get('conversation_id', 'N/A')}"):
+                    with st.expander(f"{record.get('conversation_id', 'N/A')} - {record.get('start_time', 'N/A').strftime('%Y-%m-%d %H:%M') if pd.notna(record.get('start_time')) else 'N/A'} - {record.get('agent_name', 'N/A')} - {record.get('device_category', 'N/A')} - {record.get('resolution', 'N/A')} - {record.get('service_rating', 'N/A')} - {record.get('sentiment_category', 'N/A')}"):
                         # Display summary above the columns
                         st.markdown("### Summary")
                         if 'transcript_summary' in record:
@@ -845,41 +845,6 @@ else:
                                     delta=metric.get("category") if "category" in metric else None,
                                     delta_color="off" if "category" in metric else "normal"
                                 )
-                            
-                            # Add dedicated sections for resolution and service rating
-                            st.markdown("### Resolution")
-                            if 'resolution' in record and pd.notna(record.get('resolution')):
-                                resolution_val = record.get('resolution')
-                                resolution_color = ""
-                                if resolution_val == "Resolved":
-                                    resolution_color = ":green"
-                                elif resolution_val == "Partial":
-                                    resolution_color = ":orange"
-                                elif resolution_val == "Unresolved":
-                                    resolution_color = ":red"
-                                
-                                st.markdown(f"**Status:** :{resolution_color}[{resolution_val}]")
-                            else:
-                                st.write("Resolution status not available")
-                            
-                            st.markdown("### Service Rating")
-                            if 'service_rating_numeric' in record and pd.notna(record.get('service_rating_numeric')):
-                                rating = float(record.get('service_rating_numeric'))
-                                rating_display = f"{rating:.1f}/10"
-                                
-                                # Visual representation of rating
-                                if rating >= 8:
-                                    st.markdown(f"**Rating:** :star: :star: :star: :star: :star: ({rating_display})")
-                                elif rating >= 6:
-                                    st.markdown(f"**Rating:** :star: :star: :star: :star: ({rating_display})")
-                                elif rating >= 4:
-                                    st.markdown(f"**Rating:** :star: :star: :star: ({rating_display})")
-                                elif rating >= 2:
-                                    st.markdown(f"**Rating:** :star: :star: ({rating_display})")
-                                else:
-                                    st.markdown(f"**Rating:** :star: ({rating_display})")
-                            else:
-                                st.write("Service rating not available")
                         
                         # Column 2 (transcript and reasons)
                         with col2:
@@ -901,4 +866,8 @@ else:
                             if 'service_rating_reason' in record and pd.notna(record.get('service_rating_reason')) and record.get('service_rating_reason') != 'N/A':
                                 st.text_area("", record.get('service_rating_reason', ''), height=75, key=f"rating_reason_{idx}")
                             else:
-                                st.write("Rating reason not available") 
+                                st.write("Rating reason not available")
+            else:
+                st.warning("Please select a valid date range.")
+        else:
+            st.warning("Date information is not available for transcript records.") 
