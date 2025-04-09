@@ -237,13 +237,15 @@ if not df_filtered.empty and 'resolution' in df_filtered.columns:
     df_filtered['service_index'] = df_filtered.apply(calculate_service_index, axis=1)
 
 # Create tabs for different views
-tab1, tab2 = st.tabs(["Overview", "Agent Metrics"])
+tab1, tab2, tab3 = st.tabs(["Overview", "Agent Metrics", "Record Viewer"])
 
 # Main dashboard content
 if df_filtered.empty:
     with tab1:
         st.warning("No data available with the current filters. Please adjust your filters.")
     with tab2:
+        st.warning("No data available with the current filters. Please adjust your filters.")
+    with tab3:
         st.warning("No data available with the current filters. Please adjust your filters.")
 else:
     # Tab 1: Overview
@@ -440,46 +442,50 @@ else:
                 with col3:
                     st.metric("Mode Rating", f"{rating_mode:.1f}")
                 
-                # Histogram of service ratings
-                fig = px.histogram(
-                    df_filtered,
-                    x='service_rating_numeric',
-                    nbins=10,
-                    labels={'service_rating_numeric': 'Service Rating', 'count': 'Frequency'},
-                    title="Distribution of Service Ratings",
-                    color_discrete_sequence=['#636EFA']
-                )
-                fig.update_layout(bargap=0.1)
-                st.plotly_chart(fig, use_container_width=True)
+                # Create two columns for the charts
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Histogram of service ratings
+                    fig = px.histogram(
+                        df_filtered,
+                        x='service_rating_numeric',
+                        nbins=10,
+                        labels={'service_rating_numeric': 'Service Rating', 'count': 'Frequency'},
+                        title="Distribution of Service Ratings",
+                        color_discrete_sequence=['#636EFA']
+                    )
+                    fig.update_layout(bargap=0.1)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    # Service Index vs Resolution visualization
+                    if 'service_index' in df_filtered.columns and 'resolution' in df_filtered.columns:
+                        # Calculate average service index by resolution
+                        service_by_resolution = df_filtered.groupby('resolution')['service_index'].mean().reset_index()
+                        
+                        # Create bar chart
+                        fig = px.bar(
+                            service_by_resolution,
+                            x='resolution',
+                            y='service_index',
+                            color='resolution',
+                            labels={'resolution': 'Resolution', 'service_index': 'Avg Service Index'},
+                            color_discrete_map={
+                                'Resolved': '#4DAF4A',
+                                'Partial': '#FFFF33',
+                                'Unresolved': '#E41A1C'
+                            },
+                            title="Service Index by Resolution Category"
+                        )
+                        fig.update_layout(yaxis_range=[0, 10])
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.warning("Service index or resolution information is not available.")
             else:
                 st.warning("No valid service rating data available.")
         else:
             st.warning("Service rating information is not available.")
-        
-        # Service Index vs Resolution visualization
-        st.subheader("Service Index by Resolution Category")
-        
-        if 'service_index' in df_filtered.columns and 'resolution' in df_filtered.columns:
-            # Calculate average service index by resolution
-            service_by_resolution = df_filtered.groupby('resolution')['service_index'].mean().reset_index()
-            
-            # Create bar chart
-            fig = px.bar(
-                service_by_resolution,
-                x='resolution',
-                y='service_index',
-                color='resolution',
-                labels={'resolution': 'Resolution', 'service_index': 'Avg Service Index'},
-                color_discrete_map={
-                    'Resolved': '#4DAF4A',
-                    'Partial': '#FFFF33',
-                    'Unresolved': '#E41A1C'
-                }
-            )
-            fig.update_layout(yaxis_range=[0, 10])
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Service index or resolution information is not available.")
     
     # Tab 2: Agent Metrics
     with tab2:
@@ -506,15 +512,16 @@ else:
             agent_metrics.rename(columns=rename_dict, inplace=True)
             
             # Display the metrics table
-            st.dataframe(
-                agent_metrics.style.format({
-                    'Avg Sentiment Score': '{:.2f}',
-                    'Avg Service Rating': '{:.2f}',
-                    'Avg Service Index': '{:.2f}',
-                    'Avg Duration (min)': '{:.2f}',
-                }),
-                use_container_width=True
-            )
+            with st.expander("See Agent Metrics Table"):
+                st.dataframe(
+                    agent_metrics.style.format({
+                        'Avg Sentiment Score': '{:.2f}',
+                        'Avg Service Rating': '{:.2f}',
+                        'Avg Service Index': '{:.2f}',
+                        'Avg Duration (min)': '{:.2f}',
+                    }),
+                    use_container_width=True
+                )
             
             # Calculate and display resolution percentages by agent
             if 'resolution' in df_filtered.columns:
@@ -540,14 +547,15 @@ else:
                 ).reset_index()
                 
                 # Display the table
-                st.dataframe(
-                    resolution_by_agent.style.format({
-                        'Resolved': '{:.1f}%',
-                        'Partial': '{:.1f}%',
-                        'Unresolved': '{:.1f}%',
-                    }),
-                    use_container_width=True
-                )
+                with st.expander("See Resolution Rates Table"):
+                    st.dataframe(
+                        resolution_by_agent.style.format({
+                            'Resolved': '{:.1f}%',
+                            'Partial': '{:.1f}%',
+                            'Unresolved': '{:.1f}%',
+                        }),
+                        use_container_width=True
+                    )
                 
                 # Resolution Rate Comparison - Horizontal bar chart
                 st.subheader("Resolution Rate by Agent")
@@ -602,10 +610,11 @@ else:
                 ).reset_index()
                 
                 # Display the table
-                st.dataframe(
-                    sentiment_by_agent,
-                    use_container_width=True
-                )
+                with st.expander("See Sentiment Breakdown Table"):
+                    st.dataframe(
+                        sentiment_by_agent,
+                        use_container_width=True
+                    )
                 
                 # Create melted dataframe for stacked bar chart
                 sentiment_cols = [col for col in sentiment_by_agent.columns 
@@ -654,6 +663,13 @@ else:
                 # Sort by average rating
                 rating_by_agent = rating_by_agent.sort_values('Average Rating', ascending=False)
                 
+                # Display the table
+                with st.expander("See Service Rating Table"):
+                    st.dataframe(
+                        rating_by_agent,
+                        use_container_width=True
+                    )
+                
                 # Create bar chart
                 fig = px.bar(
                     rating_by_agent,
@@ -678,6 +694,13 @@ else:
                 
                 # Sort by service index
                 index_by_agent = index_by_agent.sort_values('Average Service Index', ascending=False)
+                
+                # Display the table
+                with st.expander("See Service Index Table"):
+                    st.dataframe(
+                        index_by_agent,
+                        use_container_width=True
+                    )
                 
                 # Create bar chart
                 fig = px.bar(
@@ -716,10 +739,11 @@ else:
                 ).reset_index()
                 
                 # Display the table
-                st.dataframe(
-                    device_by_agent,
-                    use_container_width=True
-                )
+                with st.expander("See Device Categories Table"):
+                    st.dataframe(
+                        device_by_agent,
+                        use_container_width=True
+                    )
                 
                 # Create a heatmap of device categories by agent
                 device_heatmap = pd.pivot_table(
@@ -750,72 +774,155 @@ else:
         else:
             st.warning("Agent information is not available in the filtered data.")
     
-    # Record viewer section - keep this outside the tabs
-    st.header("Transcript Record Viewer")
-    
-    # Pagination for records
-    records_per_page = 5
-    total_records = len(df_filtered)
-    total_pages = (total_records + records_per_page - 1) // records_per_page
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        page_number = st.slider("Page", 1, max(total_pages, 1), 1)
-    with col2:
-        st.write(f"Total Records: {total_records}")
-    
-    # Calculate start and end indices
-    start_idx = (page_number - 1) * records_per_page
-    end_idx = min(start_idx + records_per_page, total_records)
-    
-    # Display records for current page
-    for idx in range(start_idx, end_idx):
-        record = df_filtered.iloc[idx]
+    # Tab 3: Record Viewer
+    with tab3:
+        st.header("Transcript Record Viewer")
         
-        with st.expander(f"Record #{idx + 1}: {record.get('conversation_id', 'N/A')} - {record.get('start_time', 'N/A')} - {record.get('agent_name', 'N/A')}"):
-            col1, col2 = st.columns([2, 1])
+        if 'start_time' in df_filtered.columns and not df_filtered.empty:
+            # Date range selector for records
+            min_date = df_filtered['start_time'].min().date()
+            max_date = df_filtered['start_time'].max().date()
             
-            with col1:
-                st.markdown("### Transcript")
-                if 'transcript' in record:
-                    st.text_area("", record['transcript'], height=200, key=f"transcript_{idx}")
-                else:
-                    st.write("Transcript not available")
-                
-                st.markdown("### Summary")
-                if 'transcript_summary' in record:
-                    st.write(record['transcript_summary'])
-                else:
-                    st.write("Summary not available")
-                
-                st.markdown("### Main Issue")
-                if 'main_issue_answer' in record:
-                    st.write(record['main_issue_answer'])
-                else:
-                    st.write("Main issue not available")
+            st.subheader("Select Date Range for Records")
+            record_date_range = st.date_input(
+                "Date Range",
+                value=(min_date, min(min_date + timedelta(days=7), max_date)),
+                min_value=min_date,
+                max_value=max_date
+            )
             
-            with col2:
-                metrics_data = [
-                    {"label": "Sentiment Score", "value": f"{record.get('sentiment_score', 'N/A')}", "category": record.get('sentiment_category', 'N/A')},
-                    {"label": "Service Rating", "value": f"{record.get('service_rating_numeric', 'N/A')}/10", "category": "Rating"},
-                    {"label": "Resolution", "value": record.get('resolution', 'N/A'), "reason": record.get('resolution_reason', 'N/A')},
-                    {"label": "Device Category", "value": record.get('device_category', 'N/A')},
-                    {"label": "Service Index", "value": f"{record.get('service_index', 'N/A')}/10"},
-                    {"label": "Duration", "value": f"{record.get('duration_minutes', 'N/A'):.1f} min" if 'duration_minutes' in record else 'N/A'}
+            if len(record_date_range) == 2:
+                start_date, end_date = record_date_range
+                # Filter records by selected date range
+                date_filtered_records = df_filtered[
+                    (df_filtered['start_time'].dt.date >= start_date) & 
+                    (df_filtered['start_time'].dt.date <= end_date)
                 ]
                 
-                for metric in metrics_data:
-                    st.metric(
-                        metric["label"], 
-                        metric["value"],
-                        delta=metric.get("category") if "category" in metric else None,
-                        delta_color="off" if "category" in metric else "normal"
-                    )
+                total_filtered_records = len(date_filtered_records)
+                st.write(f"Showing {total_filtered_records} records from {start_date} to {end_date}")
                 
-                if 'resolution_reason' in record:
-                    st.markdown("### Resolution Reason")
-                    st.write(record['resolution_reason'])
+                # Sort records by date
+                date_filtered_records = date_filtered_records.sort_values('start_time', ascending=False)
                 
-                if 'service_rating_reason' in record:
-                    st.markdown("### Rating Reason")
-                    st.write(record['service_rating_reason']) 
+                # Limit display if too many records
+                display_limit = 20
+                if total_filtered_records > display_limit:
+                    st.warning(f"Displaying the {display_limit} most recent records. {total_filtered_records - display_limit} more records match your criteria.")
+                    records_to_display = date_filtered_records.head(display_limit)
+                else:
+                    records_to_display = date_filtered_records
+                
+                # Display records for selected date range
+                for idx, record in records_to_display.iterrows():
+                    with st.expander(f"{record.get('start_time', 'N/A').strftime('%Y-%m-%d %H:%M') if pd.notna(record.get('start_time')) else 'N/A'} - {record.get('agent_name', 'N/A')} - {record.get('conversation_id', 'N/A')}"):
+                        # Display summary above the columns
+                        st.markdown("### Summary")
+                        if 'transcript_summary' in record:
+                            st.write(record['transcript_summary'])
+                        else:
+                            st.write("Summary not available")
+                        
+                        # Create columns with switched content
+                        col1, col2 = st.columns([1, 2])
+                        
+                        # Column 1 (metrics)
+                        with col1:
+                            metrics_data = [
+                                {"label": "Device Category", "value": record.get('device_category', 'N/A')},
+                                {"label": "Duration", "value": f"{record.get('duration_minutes', 'N/A'):.1f} min" if 'duration_minutes' in record else 'N/A'},
+                                {"label": "Main Issue", "value": record.get('main_issue_answer', 'N/A')},
+                                {"label": "Resolution", "value": record.get('resolution', 'N/A')},
+                                {"label": "Service Rating", "value": f"{record.get('service_rating_numeric', 'N/A')}/10", "category": "Rating"},
+                                {"label": "Sentiment Score", "value": f"{record.get('sentiment_score', 'N/A')}", "category": record.get('sentiment_category', 'N/A')},
+                                {"label": "Service Index", "value": f"{record.get('service_index', 'N/A')}/10"}
+                            ]
+                            
+                            for metric in metrics_data:
+                                st.metric(
+                                    metric["label"], 
+                                    metric["value"],
+                                    delta=metric.get("category") if "category" in metric else None,
+                                    delta_color="off" if "category" in metric else "normal"
+                                )
+
+                        # Column 1 (metrics)
+                        with col1:
+                            metrics_data = [
+                                {"label": "Device Category", "value": record.get('device_category', 'N/A')},
+                                {"label": "Duration", "value": f"{record.get('duration_minutes', 'N/A'):.1f} min" if 'duration_minutes' in record else 'N/A'},
+                                {"label": "Main Issue", "value": record.get('main_issue_answer', 'N/A')},
+                                {"label": "Resolution", "value": record.get('resolution', 'N/A')},
+                                {"label": "Service Rating", "value": f"{record.get('service_rating_numeric', 'N/A')}/10", "category": "Rating"},
+                                {"label": "Sentiment Score", "value": f"{record.get('sentiment_score', 'N/A')}", "category": record.get('sentiment_category', 'N/A')},
+                                {"label": "Service Index", "value": f"{record.get('service_index', 'N/A')}/10"}
+                            ]
+                            
+                            for metric in metrics_data:
+                                st.metric(
+                                    metric["label"], 
+                                    metric["value"],
+                                    delta=metric.get("category") if "category" in metric else None,
+                                    delta_color="off" if "category" in metric else "normal"
+                                )
+                            
+                            # Add dedicated sections for resolution and service rating
+                            st.markdown("### Resolution")
+                            if 'resolution' in record and pd.notna(record.get('resolution')):
+                                resolution_val = record.get('resolution')
+                                resolution_color = ""
+                                if resolution_val == "Resolved":
+                                    resolution_color = ":green"
+                                elif resolution_val == "Partial":
+                                    resolution_color = ":orange"
+                                elif resolution_val == "Unresolved":
+                                    resolution_color = ":red"
+                                
+                                st.markdown(f"**Status:** :{resolution_color}[{resolution_val}]")
+                            else:
+                                st.write("Resolution status not available")
+                            
+                            st.markdown("### Service Rating")
+                            if 'service_rating_numeric' in record and pd.notna(record.get('service_rating_numeric')):
+                                rating = float(record.get('service_rating_numeric'))
+                                rating_display = f"{rating:.1f}/10"
+                                
+                                # Visual representation of rating
+                                if rating >= 8:
+                                    st.markdown(f"**Rating:** :star: :star: :star: :star: :star: ({rating_display})")
+                                elif rating >= 6:
+                                    st.markdown(f"**Rating:** :star: :star: :star: :star: ({rating_display})")
+                                elif rating >= 4:
+                                    st.markdown(f"**Rating:** :star: :star: :star: ({rating_display})")
+                                elif rating >= 2:
+                                    st.markdown(f"**Rating:** :star: :star: ({rating_display})")
+                                else:
+                                    st.markdown(f"**Rating:** :star: ({rating_display})")
+                            else:
+                                st.write("Service rating not available")
+                        
+                        # Column 2 (transcript and reasons)
+                        with col2:
+                            st.markdown("### Transcript")
+                            if 'transcript' in record:
+                                st.text_area("", record['transcript'], height=300, key=f"transcript_{idx}")
+                            else:
+                                st.write("Transcript not available")
+                            
+                            # Display resolution reason in a text area
+                            st.markdown("### Resolution Reason")
+                            if 'resolution_reason' in record and pd.notna(record.get('resolution_reason')) and record.get('resolution_reason') != 'N/A':
+                                st.text_area("", record.get('resolution_reason', ''), height=75, key=f"resolution_reason_{idx}")
+                            else:
+                                st.write("Resolution reason not available")
+                            
+                            # Display rating reason in a text area
+                            st.markdown("### Rating Reason")
+                            if 'service_rating_reason' in record and pd.notna(record.get('service_rating_reason')) and record.get('service_rating_reason') != 'N/A':
+                                st.text_area("", record.get('service_rating_reason', ''), height=75, key=f"rating_reason_{idx}")
+                            else:
+                                st.write("Rating reason not available")
+            else:
+                st.warning("Please select a valid date range.")
+        else:
+            st.warning("Date information is not available for transcript records.") 
