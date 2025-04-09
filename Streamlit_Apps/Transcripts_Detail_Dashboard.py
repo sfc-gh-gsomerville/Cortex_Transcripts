@@ -236,244 +236,521 @@ def calculate_service_index(row):
 if not df_filtered.empty and 'resolution' in df_filtered.columns:
     df_filtered['service_index'] = df_filtered.apply(calculate_service_index, axis=1)
 
+# Create tabs for different views
+tab1, tab2 = st.tabs(["Overview", "Agent Metrics"])
+
 # Main dashboard content
 if df_filtered.empty:
-    st.warning("No data available with the current filters. Please adjust your filters.")
+    with tab1:
+        st.warning("No data available with the current filters. Please adjust your filters.")
+    with tab2:
+        st.warning("No data available with the current filters. Please adjust your filters.")
 else:
-    # Key metrics section
-    st.header("Key Metrics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        total_transcripts = len(df_filtered)
-        st.metric("Total Transcripts", f"{total_transcripts:,}")
-    
-    with col2:
-        if 'sentiment_score' in df_filtered.columns:
-            avg_sentiment = df_filtered['sentiment_score'].mean()
-            st.metric("Avg Sentiment Score", f"{avg_sentiment:.2f}")
+    # Tab 1: Overview
+    with tab1:
+        # Key metrics section
+        st.header("Key Metrics")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            total_transcripts = len(df_filtered)
+            st.metric("Total Transcripts", f"{total_transcripts:,}")
+        
+        with col2:
+            if 'sentiment_score' in df_filtered.columns:
+                avg_sentiment = df_filtered['sentiment_score'].mean()
+                st.metric("Avg Sentiment Score", f"{avg_sentiment:.2f}")
+            else:
+                st.metric("Avg Sentiment Score", "N/A")
+        
+        with col3:
+            if 'service_rating_numeric' in df_filtered.columns:
+                avg_rating = df_filtered['service_rating_numeric'].mean()
+                st.metric("Avg Service Rating", f"{avg_rating:.2f}/10")
+            else:
+                st.metric("Avg Service Rating", "N/A")
+        
+        with col4:
+            if 'service_index' in df_filtered.columns:
+                avg_service_index = df_filtered['service_index'].mean()
+                st.metric("Avg Service Index", f"{avg_service_index:.2f}/10")
+            else:
+                st.metric("Avg Service Index", "N/A")
+        
+        # Calls per day visualization
+        st.subheader("Calls per Day")
+        if 'start_time' in df_filtered.columns:
+            calls_per_day = df_filtered.resample('D', on='start_time').size().reset_index()
+            calls_per_day.columns = ['Date', 'Count']
+            
+            fig = px.line(
+                calls_per_day, 
+                x='Date', 
+                y='Count',
+                markers=True,
+                labels={'Count': 'Number of Calls', 'Date': 'Date'},
+                height=300
+            )
+            fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+            st.plotly_chart(fig, use_container_width=True)
         else:
-            st.metric("Avg Sentiment Score", "N/A")
-    
-    with col3:
+            st.warning("Date information is not available to show calls per day.")
+        
+        # Create three columns for device, sentiment, and resolution distributions
+        col1, col2, col3 = st.columns(3)
+        
+        # Device category distribution
+        with col1:
+            st.subheader("Device Categories")
+            if 'device_category' in df_filtered.columns:
+                device_counts = df_filtered['device_category'].value_counts()
+                device_percentages = df_filtered['device_category'].value_counts(normalize=True) * 100
+                
+                device_data = pd.DataFrame({
+                    'Device': device_counts.index,
+                    'Count': device_counts.values,
+                    'Percentage': device_percentages.values
+                })
+                
+                fig = px.pie(
+                    device_data,
+                    values='Count',
+                    names='Device',
+                    hole=0.4,
+                    labels={'Device': 'Device Category'},
+                    hover_data=['Percentage'],
+                    custom_data=['Count', 'Percentage']
+                )
+                fig.update_traces(
+                    hovertemplate='<b>%{label}</b><br>Count: %{customdata[0]}<br>Percentage: %{customdata[1]:.1f}%'
+                )
+                fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Device category information is not available.")
+        
+        # Sentiment distribution
+        with col2:
+            st.subheader("Sentiment Categories")
+            if 'sentiment_category' in df_filtered.columns:
+                sentiment_counts = df_filtered['sentiment_category'].value_counts()
+                sentiment_percentages = df_filtered['sentiment_category'].value_counts(normalize=True) * 100
+                
+                sentiment_data = pd.DataFrame({
+                    'Sentiment': sentiment_counts.index,
+                    'Count': sentiment_counts.values,
+                    'Percentage': sentiment_percentages.values
+                })
+                
+                # Define color map for sentiment categories
+                sentiment_colors = {
+                    'Very Positive': '#1B9E77',
+                    'Positive': '#7FC97F',
+                    'Neutral': '#BEAED4',
+                    'Negative': '#FDC086',
+                    'Very Negative': '#E41A1C'
+                }
+                
+                available_sentiments = sentiment_data['Sentiment'].unique()
+                color_sequence = [sentiment_colors.get(s, '#CCCCCC') for s in available_sentiments]
+                
+                fig = px.pie(
+                    sentiment_data,
+                    values='Count',
+                    names='Sentiment',
+                    hole=0.4,
+                    labels={'Sentiment': 'Sentiment Category'},
+                    hover_data=['Percentage'],
+                    custom_data=['Count', 'Percentage'],
+                    color='Sentiment',
+                    color_discrete_map=sentiment_colors
+                )
+                fig.update_traces(
+                    hovertemplate='<b>%{label}</b><br>Count: %{customdata[0]}<br>Percentage: %{customdata[1]:.1f}%'
+                )
+                fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Sentiment category information is not available.")
+        
+        # Resolution distribution
+        with col3:
+            st.subheader("Resolution Categories")
+            if 'resolution' in df_filtered.columns:
+                resolution_counts = df_filtered['resolution'].value_counts()
+                resolution_percentages = df_filtered['resolution'].value_counts(normalize=True) * 100
+                
+                resolution_data = pd.DataFrame({
+                    'Resolution': resolution_counts.index,
+                    'Count': resolution_counts.values,
+                    'Percentage': resolution_percentages.values
+                })
+                
+                # Define color map for resolution categories
+                resolution_colors = {
+                    'Resolved': '#4DAF4A',
+                    'Partial': '#FFFF33',
+                    'Unresolved': '#E41A1C'
+                }
+                
+                fig = px.pie(
+                    resolution_data,
+                    values='Count',
+                    names='Resolution',
+                    hole=0.4,
+                    labels={'Resolution': 'Resolution Category'},
+                    hover_data=['Percentage'],
+                    custom_data=['Count', 'Percentage'],
+                    color='Resolution',
+                    color_discrete_map=resolution_colors
+                )
+                fig.update_traces(
+                    hovertemplate='<b>%{label}</b><br>Count: %{customdata[0]}<br>Percentage: %{customdata[1]:.1f}%'
+                )
+                fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Resolution information is not available.")
+        
+        # Service rating statistics
+        st.subheader("Service Rating Statistics")
+        
         if 'service_rating_numeric' in df_filtered.columns:
-            avg_rating = df_filtered['service_rating_numeric'].mean()
-            st.metric("Avg Service Rating", f"{avg_rating:.2f}/10")
+            # Calculate statistics
+            valid_ratings = df_filtered['service_rating_numeric'].dropna()
+            
+            if not valid_ratings.empty:
+                rating_mean = valid_ratings.mean()
+                rating_median = valid_ratings.median()
+                
+                try:
+                    rating_mode = mode(valid_ratings)
+                except:
+                    rating_mode = valid_ratings.value_counts().index[0]
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Mean Rating", f"{rating_mean:.2f}")
+                
+                with col2:
+                    st.metric("Median Rating", f"{rating_median:.2f}")
+                
+                with col3:
+                    st.metric("Mode Rating", f"{rating_mode:.1f}")
+                
+                # Histogram of service ratings
+                fig = px.histogram(
+                    df_filtered,
+                    x='service_rating_numeric',
+                    nbins=10,
+                    labels={'service_rating_numeric': 'Service Rating', 'count': 'Frequency'},
+                    title="Distribution of Service Ratings",
+                    color_discrete_sequence=['#636EFA']
+                )
+                fig.update_layout(bargap=0.1)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("No valid service rating data available.")
         else:
-            st.metric("Avg Service Rating", "N/A")
-    
-    with col4:
-        if 'service_index' in df_filtered.columns:
-            avg_service_index = df_filtered['service_index'].mean()
-            st.metric("Avg Service Index", f"{avg_service_index:.2f}/10")
-        else:
-            st.metric("Avg Service Index", "N/A")
-    
-    # Calls per day visualization
-    st.subheader("Calls per Day")
-    if 'start_time' in df_filtered.columns:
-        calls_per_day = df_filtered.resample('D', on='start_time').size().reset_index()
-        calls_per_day.columns = ['Date', 'Count']
+            st.warning("Service rating information is not available.")
         
-        fig = px.line(
-            calls_per_day, 
-            x='Date', 
-            y='Count',
-            markers=True,
-            labels={'Count': 'Number of Calls', 'Date': 'Date'},
-            height=300
-        )
-        fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.warning("Date information is not available to show calls per day.")
-    
-    # Create three columns for device, sentiment, and resolution distributions
-    col1, col2, col3 = st.columns(3)
-    
-    # Device category distribution
-    with col1:
-        st.subheader("Device Categories")
-        if 'device_category' in df_filtered.columns:
-            device_counts = df_filtered['device_category'].value_counts()
-            device_percentages = df_filtered['device_category'].value_counts(normalize=True) * 100
-            
-            device_data = pd.DataFrame({
-                'Device': device_counts.index,
-                'Count': device_counts.values,
-                'Percentage': device_percentages.values
-            })
-            
-            fig = px.pie(
-                device_data,
-                values='Count',
-                names='Device',
-                hole=0.4,
-                labels={'Device': 'Device Category'},
-                hover_data=['Percentage'],
-                custom_data=['Count', 'Percentage']
-            )
-            fig.update_traces(
-                hovertemplate='<b>%{label}</b><br>Count: %{customdata[0]}<br>Percentage: %{customdata[1]:.1f}%'
-            )
-            fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Device category information is not available.")
-    
-    # Sentiment distribution
-    with col2:
-        st.subheader("Sentiment Categories")
-        if 'sentiment_category' in df_filtered.columns:
-            sentiment_counts = df_filtered['sentiment_category'].value_counts()
-            sentiment_percentages = df_filtered['sentiment_category'].value_counts(normalize=True) * 100
-            
-            sentiment_data = pd.DataFrame({
-                'Sentiment': sentiment_counts.index,
-                'Count': sentiment_counts.values,
-                'Percentage': sentiment_percentages.values
-            })
-            
-            # Define color map for sentiment categories
-            sentiment_colors = {
-                'Very Positive': '#1B9E77',
-                'Positive': '#7FC97F',
-                'Neutral': '#BEAED4',
-                'Negative': '#FDC086',
-                'Very Negative': '#E41A1C'
-            }
-            
-            available_sentiments = sentiment_data['Sentiment'].unique()
-            color_sequence = [sentiment_colors.get(s, '#CCCCCC') for s in available_sentiments]
-            
-            fig = px.pie(
-                sentiment_data,
-                values='Count',
-                names='Sentiment',
-                hole=0.4,
-                labels={'Sentiment': 'Sentiment Category'},
-                hover_data=['Percentage'],
-                custom_data=['Count', 'Percentage'],
-                color='Sentiment',
-                color_discrete_map=sentiment_colors
-            )
-            fig.update_traces(
-                hovertemplate='<b>%{label}</b><br>Count: %{customdata[0]}<br>Percentage: %{customdata[1]:.1f}%'
-            )
-            fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Sentiment category information is not available.")
-    
-    # Resolution distribution
-    with col3:
-        st.subheader("Resolution Categories")
-        if 'resolution' in df_filtered.columns:
-            resolution_counts = df_filtered['resolution'].value_counts()
-            resolution_percentages = df_filtered['resolution'].value_counts(normalize=True) * 100
-            
-            resolution_data = pd.DataFrame({
-                'Resolution': resolution_counts.index,
-                'Count': resolution_counts.values,
-                'Percentage': resolution_percentages.values
-            })
-            
-            # Define color map for resolution categories
-            resolution_colors = {
-                'Resolved': '#4DAF4A',
-                'Partial': '#FFFF33',
-                'Unresolved': '#E41A1C'
-            }
-            
-            fig = px.pie(
-                resolution_data,
-                values='Count',
-                names='Resolution',
-                hole=0.4,
-                labels={'Resolution': 'Resolution Category'},
-                hover_data=['Percentage'],
-                custom_data=['Count', 'Percentage'],
-                color='Resolution',
-                color_discrete_map=resolution_colors
-            )
-            fig.update_traces(
-                hovertemplate='<b>%{label}</b><br>Count: %{customdata[0]}<br>Percentage: %{customdata[1]:.1f}%'
-            )
-            fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Resolution information is not available.")
-    
-    # Service rating statistics
-    st.subheader("Service Rating Statistics")
-    
-    if 'service_rating_numeric' in df_filtered.columns:
-        # Calculate statistics
-        valid_ratings = df_filtered['service_rating_numeric'].dropna()
+        # Service Index vs Resolution visualization
+        st.subheader("Service Index by Resolution Category")
         
-        if not valid_ratings.empty:
-            rating_mean = valid_ratings.mean()
-            rating_median = valid_ratings.median()
+        if 'service_index' in df_filtered.columns and 'resolution' in df_filtered.columns:
+            # Calculate average service index by resolution
+            service_by_resolution = df_filtered.groupby('resolution')['service_index'].mean().reset_index()
             
-            try:
-                rating_mode = mode(valid_ratings)
-            except:
-                rating_mode = valid_ratings.value_counts().index[0]
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Mean Rating", f"{rating_mean:.2f}")
-            
-            with col2:
-                st.metric("Median Rating", f"{rating_median:.2f}")
-            
-            with col3:
-                st.metric("Mode Rating", f"{rating_mode:.1f}")
-            
-            # Histogram of service ratings
-            fig = px.histogram(
-                df_filtered,
-                x='service_rating_numeric',
-                nbins=10,
-                labels={'service_rating_numeric': 'Service Rating', 'count': 'Frequency'},
-                title="Distribution of Service Ratings",
-                color_discrete_sequence=['#636EFA']
+            # Create bar chart
+            fig = px.bar(
+                service_by_resolution,
+                x='resolution',
+                y='service_index',
+                color='resolution',
+                labels={'resolution': 'Resolution', 'service_index': 'Avg Service Index'},
+                color_discrete_map={
+                    'Resolved': '#4DAF4A',
+                    'Partial': '#FFFF33',
+                    'Unresolved': '#E41A1C'
+                }
             )
-            fig.update_layout(bargap=0.1)
+            fig.update_layout(yaxis_range=[0, 10])
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("No valid service rating data available.")
-    else:
-        st.warning("Service rating information is not available.")
+            st.warning("Service index or resolution information is not available.")
     
-    # Service Index vs Resolution visualization
-    st.subheader("Service Index by Resolution Category")
-    
-    if 'service_index' in df_filtered.columns and 'resolution' in df_filtered.columns:
-        # Calculate average service index by resolution
-        service_by_resolution = df_filtered.groupby('resolution')['service_index'].mean().reset_index()
+    # Tab 2: Agent Metrics
+    with tab2:
+        st.header("Agent Performance Metrics")
         
-        # Create bar chart
-        fig = px.bar(
-            service_by_resolution,
-            x='resolution',
-            y='service_index',
-            color='resolution',
-            labels={'resolution': 'Resolution', 'service_index': 'Avg Service Index'},
-            color_discrete_map={
-                'Resolved': '#4DAF4A',
-                'Partial': '#FFFF33',
-                'Unresolved': '#E41A1C'
+        if 'agent_name' in df_filtered.columns:
+            # Prepare agent metrics dataframe
+            agent_metrics = df_filtered.groupby('agent_name').agg({
+                'conversation_id': 'count',
+                'sentiment_score': 'mean' if 'sentiment_score' in df_filtered.columns else 'size',
+                'service_rating_numeric': 'mean' if 'service_rating_numeric' in df_filtered.columns else 'size',
+                'service_index': 'mean' if 'service_index' in df_filtered.columns else 'size',
+                'duration_minutes': 'mean' if 'duration_minutes' in df_filtered.columns else 'size'
+            }).reset_index()
+            
+            # Rename the columns
+            rename_dict = {
+                'conversation_id': 'Total Transcripts',
+                'sentiment_score': 'Avg Sentiment Score',
+                'service_rating_numeric': 'Avg Service Rating',
+                'service_index': 'Avg Service Index',
+                'duration_minutes': 'Avg Duration (min)'
             }
-        )
-        fig.update_layout(yaxis_range=[0, 10])
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.warning("Service index or resolution information is not available.")
+            agent_metrics.rename(columns=rename_dict, inplace=True)
+            
+            # Display the metrics table
+            st.dataframe(
+                agent_metrics.style.format({
+                    'Avg Sentiment Score': '{:.2f}',
+                    'Avg Service Rating': '{:.2f}',
+                    'Avg Service Index': '{:.2f}',
+                    'Avg Duration (min)': '{:.2f}',
+                }),
+                use_container_width=True
+            )
+            
+            # Calculate and display resolution percentages by agent
+            if 'resolution' in df_filtered.columns:
+                st.subheader("Resolution Rates by Agent")
+                
+                # Calculate cross-tabulation of agent vs resolution
+                resolution_by_agent = pd.crosstab(
+                    df_filtered['agent_name'], 
+                    df_filtered['resolution'], 
+                    normalize='index'
+                ) * 100
+                
+                # Format to 1 decimal place
+                for col in resolution_by_agent.columns:
+                    resolution_by_agent[col] = resolution_by_agent[col].round(1)
+                
+                # Add a total count column
+                agent_counts = df_filtered.groupby('agent_name').size().rename('Total Transcripts')
+                resolution_by_agent = resolution_by_agent.merge(
+                    agent_counts,
+                    left_index=True,
+                    right_index=True
+                ).reset_index()
+                
+                # Display the table
+                st.dataframe(
+                    resolution_by_agent.style.format({
+                        'Resolved': '{:.1f}%',
+                        'Partial': '{:.1f}%',
+                        'Unresolved': '{:.1f}%',
+                    }),
+                    use_container_width=True
+                )
+                
+                # Resolution Rate Comparison - Horizontal bar chart
+                st.subheader("Resolution Rate by Agent")
+                
+                # Create a melted dataframe for the stacked bar chart
+                resolution_plot_data = pd.melt(
+                    resolution_by_agent,
+                    id_vars=['agent_name', 'Total Transcripts'],
+                    value_vars=resolution_by_agent.columns[1:-1],  # All resolution columns
+                    var_name='Resolution Type',
+                    value_name='Percentage'
+                )
+                
+                # Create stacked bar chart
+                fig = px.bar(
+                    resolution_plot_data,
+                    x='Percentage',
+                    y='agent_name',
+                    color='Resolution Type',
+                    orientation='h',
+                    labels={'agent_name': 'Agent', 'Percentage': 'Percentage (%)'},
+                    color_discrete_map={
+                        'Resolved': '#4DAF4A',
+                        'Partial': '#FFFF33',
+                        'Unresolved': '#E41A1C'
+                    },
+                    height=max(350, len(resolution_by_agent) * 30)  # Adjust height based on number of agents
+                )
+                fig.update_layout(xaxis_range=[0, 100])
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Sentiment Score by Agent
+            if 'sentiment_score' in df_filtered.columns and 'sentiment_category' in df_filtered.columns:
+                st.subheader("Sentiment Breakdown by Agent")
+                
+                # Calculate sentiment categories by agent
+                sentiment_by_agent = pd.crosstab(
+                    df_filtered['agent_name'], 
+                    df_filtered['sentiment_category'], 
+                    normalize='index'
+                ) * 100
+                
+                # Format to 1 decimal place
+                for col in sentiment_by_agent.columns:
+                    sentiment_by_agent[col] = sentiment_by_agent[col].round(1)
+                
+                # Add a count column
+                sentiment_by_agent = sentiment_by_agent.merge(
+                    agent_counts,
+                    left_index=True,
+                    right_index=True
+                ).reset_index()
+                
+                # Display the table
+                st.dataframe(
+                    sentiment_by_agent,
+                    use_container_width=True
+                )
+                
+                # Create melted dataframe for stacked bar chart
+                sentiment_cols = [col for col in sentiment_by_agent.columns 
+                                if col not in ['agent_name', 'Total Transcripts']]
+                
+                if sentiment_cols:
+                    sentiment_plot_data = pd.melt(
+                        sentiment_by_agent,
+                        id_vars=['agent_name', 'Total Transcripts'],
+                        value_vars=sentiment_cols,
+                        var_name='Sentiment Category',
+                        value_name='Percentage'
+                    )
+                    
+                    # Sentiment colors
+                    sentiment_colors = {
+                        'Very Positive': '#1B9E77',
+                        'Positive': '#7FC97F',
+                        'Neutral': '#BEAED4',
+                        'Negative': '#FDC086',
+                        'Very Negative': '#E41A1C'
+                    }
+                    
+                    # Create stacked bar chart
+                    fig = px.bar(
+                        sentiment_plot_data,
+                        x='Percentage',
+                        y='agent_name',
+                        color='Sentiment Category',
+                        orientation='h',
+                        labels={'agent_name': 'Agent', 'Percentage': 'Percentage (%)'},
+                        color_discrete_map=sentiment_colors,
+                        height=max(350, len(sentiment_by_agent) * 30)
+                    )
+                    fig.update_layout(xaxis_range=[0, 100])
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            # Service Rating Comparison
+            if 'service_rating_numeric' in df_filtered.columns:
+                st.subheader("Service Rating by Agent")
+                
+                # Create a dataframe with average service ratings
+                rating_by_agent = df_filtered.groupby('agent_name')['service_rating_numeric'].agg(['mean', 'count']).reset_index()
+                rating_by_agent.columns = ['Agent', 'Average Rating', 'Count']
+                
+                # Sort by average rating
+                rating_by_agent = rating_by_agent.sort_values('Average Rating', ascending=False)
+                
+                # Create bar chart
+                fig = px.bar(
+                    rating_by_agent,
+                    x='Average Rating',
+                    y='Agent',
+                    orientation='h',
+                    labels={'Average Rating': 'Average Service Rating (/10)'},
+                    color='Average Rating',
+                    color_continuous_scale='RdYlGn',
+                    height=max(350, len(rating_by_agent) * 30)
+                )
+                fig.update_layout(xaxis_range=[0, 10])
+                st.plotly_chart(fig, use_container_width=True)
+                
+            # Service Index Comparison
+            if 'service_index' in df_filtered.columns:
+                st.subheader("Service Index by Agent")
+                
+                # Create dataframe with average service index
+                index_by_agent = df_filtered.groupby('agent_name')['service_index'].agg(['mean', 'count']).reset_index()
+                index_by_agent.columns = ['Agent', 'Average Service Index', 'Count']
+                
+                # Sort by service index
+                index_by_agent = index_by_agent.sort_values('Average Service Index', ascending=False)
+                
+                # Create bar chart
+                fig = px.bar(
+                    index_by_agent,
+                    x='Average Service Index',
+                    y='Agent',
+                    orientation='h',
+                    labels={'Average Service Index': 'Average Service Index (/10)'},
+                    color='Average Service Index',
+                    color_continuous_scale='RdYlGn',
+                    height=max(350, len(index_by_agent) * 30)
+                )
+                fig.update_layout(xaxis_range=[0, 10])
+                st.plotly_chart(fig, use_container_width=True)
+                
+            # Device Categories by Agent
+            if 'device_category' in df_filtered.columns:
+                st.subheader("Device Categories Handled by Agent")
+                
+                # Calculate device categories by agent
+                device_by_agent = pd.crosstab(
+                    df_filtered['agent_name'], 
+                    df_filtered['device_category'], 
+                    normalize='index'
+                ) * 100
+                
+                # Format to 1 decimal place
+                for col in device_by_agent.columns:
+                    device_by_agent[col] = device_by_agent[col].round(1)
+                
+                # Add count column
+                device_by_agent = device_by_agent.merge(
+                    agent_counts,
+                    left_index=True,
+                    right_index=True
+                ).reset_index()
+                
+                # Display the table
+                st.dataframe(
+                    device_by_agent,
+                    use_container_width=True
+                )
+                
+                # Create a heatmap of device categories by agent
+                device_heatmap = pd.pivot_table(
+                    df_filtered,
+                    values='conversation_id',
+                    index='agent_name',
+                    columns='device_category',
+                    aggfunc='count',
+                    fill_value=0
+                )
+                
+                # Normalize by row (agent)
+                device_heatmap_pct = device_heatmap.div(device_heatmap.sum(axis=1), axis=0) * 100
+                
+                # Create heatmap
+                fig = px.imshow(
+                    device_heatmap_pct,
+                    labels=dict(x="Device Category", y="Agent", color="Percentage (%)"),
+                    color_continuous_scale='Blues',
+                    aspect="auto",
+                    height=max(350, len(device_heatmap) * 30)
+                )
+                fig.update_layout(
+                    xaxis=dict(side="top"),
+                    coloraxis_colorbar=dict(title="Percentage (%)")
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Agent information is not available in the filtered data.")
     
-    # Record viewer section
+    # Record viewer section - keep this outside the tabs
     st.header("Transcript Record Viewer")
     
     # Pagination for records
