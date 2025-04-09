@@ -845,26 +845,6 @@ else:
                                     delta=metric.get("category") if "category" in metric else None,
                                     delta_color="off" if "category" in metric else "normal"
                                 )
-
-                        # Column 1 (metrics)
-                        with col1:
-                            metrics_data = [
-                                {"label": "Device Category", "value": record.get('device_category', 'N/A')},
-                                {"label": "Duration", "value": f"{record.get('duration_minutes', 'N/A'):.1f} min" if 'duration_minutes' in record else 'N/A'},
-                                {"label": "Main Issue", "value": record.get('main_issue_answer', 'N/A')},
-                                {"label": "Resolution", "value": record.get('resolution', 'N/A')},
-                                {"label": "Service Rating", "value": f"{record.get('service_rating_numeric', 'N/A')}/10", "category": "Rating"},
-                                {"label": "Sentiment Score", "value": f"{record.get('sentiment_score', 'N/A')}", "category": record.get('sentiment_category', 'N/A')},
-                                {"label": "Service Index", "value": f"{record.get('service_index', 'N/A')}/10"}
-                            ]
-                            
-                            for metric in metrics_data:
-                                st.metric(
-                                    metric["label"], 
-                                    metric["value"],
-                                    delta=metric.get("category") if "category" in metric else None,
-                                    delta_color="off" if "category" in metric else "normal"
-                                )
                             
                             # Add dedicated sections for resolution and service rating
                             st.markdown("### Resolution")
@@ -921,8 +901,4 @@ else:
                             if 'service_rating_reason' in record and pd.notna(record.get('service_rating_reason')) and record.get('service_rating_reason') != 'N/A':
                                 st.text_area("", record.get('service_rating_reason', ''), height=75, key=f"rating_reason_{idx}")
                             else:
-                                st.write("Rating reason not available")
-            else:
-                st.warning("Please select a valid date range.")
-        else:
-            st.warning("Date information is not available for transcript records.") 
+                                st.write("Rating reason not available") 
