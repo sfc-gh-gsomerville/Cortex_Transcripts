@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+#import numpy as np
 import plotly.express as px
 from datetime import datetime, timedelta
 from snowflake.snowpark.context import get_active_session
@@ -21,7 +21,8 @@ st.markdown("Detailed analysis of customer support transcripts with comprehensiv
 # Initialize Snowflake session
 try:
     session = get_active_session()
-    
+
+
     # Display session info for debugging
     try:
         session_info = session.sql("SELECT CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_WAREHOUSE()").collect()
@@ -227,7 +228,7 @@ def calculate_service_index(row):
             service_rating = 0
             
         # Combine scores with weights
-        service_index = (0.6 * resolution_score) + (0.4 * service_rating)
+        service_index = (0.2 * resolution_score) + (0.8 * service_rating)
         return round(service_index, 1)
     except:
         return 0
@@ -348,9 +349,9 @@ else:
                 # Define color map for sentiment categories
                 sentiment_colors = {
                     'Very Positive': '#1B9E77',
-                    'Positive': '#7FC97F',
-                    'Neutral': '#BEAED4',
-                    'Negative': '#FDC086',
+                    'Positive': '#29B5E8',
+                    'Neutral': '#75CDD7',
+                    'Negative': '#D45B90',
                     'Very Negative': '#E41A1C'
                 }
                 
@@ -391,9 +392,9 @@ else:
                 
                 # Define color map for resolution categories
                 resolution_colors = {
-                    'Resolved': '#4DAF4A',
-                    'Partial': '#FFFF33',
-                    'Unresolved': '#E41A1C'
+                    'Resolved': '#11567F',
+                    'Partial': '#FF9F36',
+                    'Unresolved': '#D45B90'
                 }
                 
                 fig = px.pie(
@@ -489,6 +490,7 @@ else:
     
     # Tab 2: Agent Metrics
     with tab2:
+
         st.header("Agent Performance Metrics")
         
         if 'agent_name' in df_filtered.columns:
@@ -512,210 +514,218 @@ else:
             agent_metrics.rename(columns=rename_dict, inplace=True)
             
             # Display the metrics table
-            with st.expander("See Agent Metrics Table"):
-                st.dataframe(
-                    agent_metrics.style.format({
-                        'Avg Sentiment Score': '{:.2f}',
-                        'Avg Service Rating': '{:.2f}',
-                        'Avg Service Index': '{:.2f}',
-                        'Avg Duration (min)': '{:.2f}',
-                    }),
-                    use_container_width=True
-                )
-            
-            # Calculate and display resolution percentages by agent
-            if 'resolution' in df_filtered.columns:
-                st.subheader("Resolution Rates by Agent")
-                
-                # Calculate cross-tabulation of agent vs resolution
-                resolution_by_agent = pd.crosstab(
-                    df_filtered['agent_name'], 
-                    df_filtered['resolution'], 
-                    normalize='index'
-                ) * 100
-                
-                # Format to 1 decimal place
-                for col in resolution_by_agent.columns:
-                    resolution_by_agent[col] = resolution_by_agent[col].round(1)
-                
-                # Add a total count column
-                agent_counts = df_filtered.groupby('agent_name').size().rename('Total Transcripts')
-                resolution_by_agent = resolution_by_agent.merge(
-                    agent_counts,
-                    left_index=True,
-                    right_index=True
-                ).reset_index()
-                
-                # Display the table
-                with st.expander("See Resolution Rates Table"):
-                    st.dataframe(
-                        resolution_by_agent.style.format({
-                            'Resolved': '{:.1f}%',
-                            'Partial': '{:.1f}%',
-                            'Unresolved': '{:.1f}%',
-                        }),
-                        use_container_width=True
-                    )
-                
-                # Resolution Rate Comparison - Horizontal bar chart
-                st.subheader("Resolution Rate by Agent")
-                
-                # Create a melted dataframe for the stacked bar chart
-                resolution_plot_data = pd.melt(
-                    resolution_by_agent,
-                    id_vars=['agent_name', 'Total Transcripts'],
-                    value_vars=resolution_by_agent.columns[1:-1],  # All resolution columns
-                    var_name='Resolution Type',
-                    value_name='Percentage'
-                )
-                
-                # Create stacked bar chart
-                fig = px.bar(
-                    resolution_plot_data,
-                    x='Percentage',
-                    y='agent_name',
-                    color='Resolution Type',
-                    orientation='h',
-                    labels={'agent_name': 'Agent', 'Percentage': 'Percentage (%)'},
-                    color_discrete_map={
-                        'Resolved': '#4DAF4A',
-                        'Partial': '#FFFF33',
-                        'Unresolved': '#E41A1C'
-                    },
-                    height=max(350, len(resolution_by_agent) * 30)  # Adjust height based on number of agents
-                )
-                fig.update_layout(xaxis_range=[0, 100])
-                st.plotly_chart(fig, use_container_width=True)
-            
-            # Sentiment Score by Agent
-            if 'sentiment_score' in df_filtered.columns and 'sentiment_category' in df_filtered.columns:
-                st.subheader("Sentiment Breakdown by Agent")
-                
-                # Calculate sentiment categories by agent
-                sentiment_by_agent = pd.crosstab(
-                    df_filtered['agent_name'], 
-                    df_filtered['sentiment_category'], 
-                    normalize='index'
-                ) * 100
-                
-                # Format to 1 decimal place
-                for col in sentiment_by_agent.columns:
-                    sentiment_by_agent[col] = sentiment_by_agent[col].round(1)
-                
-                # Add a count column
-                sentiment_by_agent = sentiment_by_agent.merge(
-                    agent_counts,
-                    left_index=True,
-                    right_index=True
-                ).reset_index()
-                
-                # Display the table
-                with st.expander("See Sentiment Breakdown Table"):
-                    st.dataframe(
-                        sentiment_by_agent,
-                        use_container_width=True
-                    )
-                
-                # Create melted dataframe for stacked bar chart
-                sentiment_cols = [col for col in sentiment_by_agent.columns 
-                                if col not in ['agent_name', 'Total Transcripts']]
-                
-                if sentiment_cols:
-                    sentiment_plot_data = pd.melt(
-                        sentiment_by_agent,
+            #with st.expander("See Agent Metrics Table"):
+            st.dataframe(
+                agent_metrics.style.format({
+                    'Avg Sentiment Score': '{:.2f}',
+                    'Avg Service Rating': '{:.2f}',
+                    'Avg Service Index': '{:.2f}',
+                    'Avg Duration (min)': '{:.2f}',
+                }),
+                use_container_width=True
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                # Calculate and display resolution percentages by agent
+                if 'resolution' in df_filtered.columns:
+                    st.subheader("Resolution Rates by Agent")
+                    
+                    # Calculate cross-tabulation of agent vs resolution
+                    resolution_by_agent = pd.crosstab(
+                        df_filtered['agent_name'], 
+                        df_filtered['resolution'], 
+                        normalize='index'
+                    ) * 100
+                    
+                    # Format to 1 decimal place
+                    for col in resolution_by_agent.columns:
+                        resolution_by_agent[col] = resolution_by_agent[col].round(1)
+                    
+                    # Add a total count column
+                    agent_counts = df_filtered.groupby('agent_name').size().rename('Total Transcripts')
+                    resolution_by_agent = resolution_by_agent.merge(
+                        agent_counts,
+                        left_index=True,
+                        right_index=True
+                    ).reset_index()
+                    
+                    # Display the table
+                    with st.expander("See Resolution Rates Table"):
+                        st.dataframe(
+                            resolution_by_agent.style.format({
+                                'Resolved': '{:.1f}%',
+                                'Partial': '{:.1f}%',
+                                'Unresolved': '{:.1f}%',
+                            }),
+                            use_container_width=True
+                        )
+                    
+                    # Resolution Rate Comparison - Horizontal bar chart
+                    #st.subheader("Resolution Rate by Agent")
+                    
+                    # Create a melted dataframe for the stacked bar chart
+                    resolution_plot_data = pd.melt(
+                        resolution_by_agent,
                         id_vars=['agent_name', 'Total Transcripts'],
-                        value_vars=sentiment_cols,
-                        var_name='Sentiment Category',
+                        value_vars=resolution_by_agent.columns[1:-1],  # All resolution columns
+                        var_name='Resolution Type',
                         value_name='Percentage'
                     )
                     
-                    # Sentiment colors
-                    sentiment_colors = {
-                        'Very Positive': '#1B9E77',
-                        'Positive': '#7FC97F',
-                        'Neutral': '#BEAED4',
-                        'Negative': '#FDC086',
-                        'Very Negative': '#E41A1C'
-                    }
-                    
                     # Create stacked bar chart
                     fig = px.bar(
-                        sentiment_plot_data,
+                        resolution_plot_data,
                         x='Percentage',
                         y='agent_name',
-                        color='Sentiment Category',
+                        color='Resolution Type',
                         orientation='h',
                         labels={'agent_name': 'Agent', 'Percentage': 'Percentage (%)'},
-                        color_discrete_map=sentiment_colors,
-                        height=max(350, len(sentiment_by_agent) * 30)
+                        color_discrete_map={
+                            'Resolved': '#29B5E8',
+                            'Partial': '#11567F',
+                            'Unresolved': '#7254A3'
+                        },
+                        height=max(350, len(resolution_by_agent) * 30)  # Adjust height based on number of agents
                     )
                     fig.update_layout(xaxis_range=[0, 100])
                     st.plotly_chart(fig, use_container_width=True)
+
+            with col2:
+                # Sentiment Score by Agent
+                if 'sentiment_score' in df_filtered.columns and 'sentiment_category' in df_filtered.columns:
+                    st.subheader("Sentiment Breakdown by Agent")
+                    
+                    # Calculate sentiment categories by agent
+                    sentiment_by_agent = pd.crosstab(
+                        df_filtered['agent_name'], 
+                        df_filtered['sentiment_category'], 
+                        normalize='index'
+                    ) * 100
+                    
+                    # Format to 1 decimal place
+                    for col in sentiment_by_agent.columns:
+                        sentiment_by_agent[col] = sentiment_by_agent[col].round(1)
+                    
+                    # Add a count column
+                    sentiment_by_agent = sentiment_by_agent.merge(
+                        agent_counts,
+                        left_index=True,
+                        right_index=True
+                    ).reset_index()
+                    
+                    # Display the table
+                    with st.expander("See Sentiment Breakdown Table"):
+                        st.dataframe(
+                            sentiment_by_agent,
+                            use_container_width=True
+                        )
+                    
+                    # Create melted dataframe for stacked bar chart
+                    sentiment_cols = [col for col in sentiment_by_agent.columns 
+                                    if col not in ['agent_name', 'Total Transcripts']]
+                    
+                    if sentiment_cols:
+                        sentiment_plot_data = pd.melt(
+                            sentiment_by_agent,
+                            id_vars=['agent_name', 'Total Transcripts'],
+                            value_vars=sentiment_cols,
+                            var_name='Sentiment Category',
+                            value_name='Percentage'
+                        )
+                        
+                        # Sentiment colors
+                        sentiment_colors = {
+                            'Very Positive': '#1B9E77',
+                            'Positive': '#7FC97F',
+                            'Neutral': '#BEAED4',
+                            'Negative': '#FDC086',
+                            'Very Negative': '#E41A1C'
+                        }
+                        
+                        # Create stacked bar chart
+                        fig = px.bar(
+                            sentiment_plot_data,
+                            x='Percentage',
+                            y='agent_name',
+                            color='Sentiment Category',
+                            orientation='h',
+                            labels={'agent_name': 'Agent', 'Percentage': 'Percentage (%)'},
+                            color_discrete_map=sentiment_colors,
+                            height=max(350, len(sentiment_by_agent) * 30)
+                        )
+                        fig.update_layout(xaxis_range=[0, 100])
+                        st.plotly_chart(fig, use_container_width=True)
             
-            # Service Rating Comparison
-            if 'service_rating_numeric' in df_filtered.columns:
-                st.subheader("Service Rating by Agent")
-                
-                # Create a dataframe with average service ratings
-                rating_by_agent = df_filtered.groupby('agent_name')['service_rating_numeric'].agg(['mean', 'count']).reset_index()
-                rating_by_agent.columns = ['Agent', 'Average Rating', 'Count']
-                
-                # Sort by average rating
-                rating_by_agent = rating_by_agent.sort_values('Average Rating', ascending=False)
-                
-                # Display the table
-                with st.expander("See Service Rating Table"):
-                    st.dataframe(
+            # Create two columns for the charts
+            col1, col2 = st.columns(2)
+
+            with col1:
+                # Service Rating Comparison
+                if 'service_rating_numeric' in df_filtered.columns:
+                    st.subheader("Service Rating by Agent")
+                    
+                    # Create a dataframe with average service ratings
+                    rating_by_agent = df_filtered.groupby('agent_name')['service_rating_numeric'].agg(['mean', 'count']).reset_index()
+                    rating_by_agent.columns = ['Agent', 'Average Rating', 'Count']
+                    
+                    # Sort by average rating
+                    rating_by_agent = rating_by_agent.sort_values('Average Rating', ascending=False)
+                    
+                    # Display the table
+                    with st.expander("See Service Rating Table"):
+                        st.dataframe(
+                            rating_by_agent,
+                            use_container_width=True
+                        )
+                    
+                    # Create bar chart
+                    fig = px.bar(
                         rating_by_agent,
-                        use_container_width=True
+                        x='Average Rating',
+                        y='Agent',
+                        orientation='h',
+                        labels={'Average Rating': 'Average Service Rating (/10)'},
+                        color='Average Rating',
+                        color_continuous_scale='RdYlGn',
+                        height=max(350, len(rating_by_agent) * 30)
                     )
-                
-                # Create bar chart
-                fig = px.bar(
-                    rating_by_agent,
-                    x='Average Rating',
-                    y='Agent',
-                    orientation='h',
-                    labels={'Average Rating': 'Average Service Rating (/10)'},
-                    color='Average Rating',
-                    color_continuous_scale='RdYlGn',
-                    height=max(350, len(rating_by_agent) * 30)
-                )
-                fig.update_layout(xaxis_range=[0, 10])
-                st.plotly_chart(fig, use_container_width=True)
-                
-            # Service Index Comparison
-            if 'service_index' in df_filtered.columns:
-                st.subheader("Service Index by Agent")
-                
-                # Create dataframe with average service index
-                index_by_agent = df_filtered.groupby('agent_name')['service_index'].agg(['mean', 'count']).reset_index()
-                index_by_agent.columns = ['Agent', 'Average Service Index', 'Count']
-                
-                # Sort by service index
-                index_by_agent = index_by_agent.sort_values('Average Service Index', ascending=False)
-                
-                # Display the table
-                with st.expander("See Service Index Table"):
-                    st.dataframe(
+                    fig.update_layout(xaxis_range=[0, 10])
+                    st.plotly_chart(fig, use_container_width=True)
+              
+            with col2:      
+                # Service Index Comparison
+                if 'service_index' in df_filtered.columns:
+                    st.subheader("Service Index by Agent")
+                    
+                    # Create dataframe with average service index
+                    index_by_agent = df_filtered.groupby('agent_name')['service_index'].agg(['mean', 'count']).reset_index()
+                    index_by_agent.columns = ['Agent', 'Average Service Index', 'Count']
+                    
+                    # Sort by service index
+                    index_by_agent = index_by_agent.sort_values('Average Service Index', ascending=False)
+                    
+                    # Display the table
+                    with st.expander("See Service Index Table"):
+                        st.dataframe(
+                            index_by_agent,
+                            use_container_width=True
+                        )
+                    
+                    # Create bar chart
+                    fig = px.bar(
                         index_by_agent,
-                        use_container_width=True
+                        x='Average Service Index',
+                        y='Agent',
+                        orientation='h',
+                        labels={'Average Service Index': 'Average Service Index (/10)'},
+                        color='Average Service Index',
+                        color_continuous_scale='RdYlGn',
+                        height=max(350, len(index_by_agent) * 30)
                     )
-                
-                # Create bar chart
-                fig = px.bar(
-                    index_by_agent,
-                    x='Average Service Index',
-                    y='Agent',
-                    orientation='h',
-                    labels={'Average Service Index': 'Average Service Index (/10)'},
-                    color='Average Service Index',
-                    color_continuous_scale='RdYlGn',
-                    height=max(350, len(index_by_agent) * 30)
-                )
-                fig.update_layout(xaxis_range=[0, 10])
-                st.plotly_chart(fig, use_container_width=True)
-                
+                    fig.update_layout(xaxis_range=[0, 10])
+                    st.plotly_chart(fig, use_container_width=True)
+                    
             # Device Categories by Agent
             if 'device_category' in df_filtered.columns:
                 st.subheader("Device Categories Handled by Agent")
@@ -744,16 +754,16 @@ else:
                         device_by_agent,
                         use_container_width=True
                     )
-                
+            
                 # Create a heatmap of device categories by agent
-                device_heatmap = pd.pivot_table(
-                    df_filtered,
-                    values='conversation_id',
-                    index='agent_name',
-                    columns='device_category',
-                    aggfunc='count',
-                    fill_value=0
-                )
+                    device_heatmap = pd.pivot_table(
+                        df_filtered,
+                        values='conversation_id',
+                        index='agent_name',
+                        columns='device_category',
+                        aggfunc='count',
+                        fill_value=0
+                    )
                 
                 # Normalize by row (agent)
                 device_heatmap_pct = device_heatmap.div(device_heatmap.sum(axis=1), axis=0) * 100
@@ -771,8 +781,11 @@ else:
                     coloraxis_colorbar=dict(title="Percentage (%)")
                 )
                 st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Agent information is not available in the filtered data.")
+                
+            else:
+                st.warning("Agent information is not available in the filtered data.")
+
+             
     
     # Tab 3: Record Viewer
     with tab3:
@@ -828,10 +841,18 @@ else:
                         
                         # Column 1 (metrics)
                         with col1:
+                            
+                            # Display Main Issue in a text area
+                            st.markdown("### Main Issue")
+                            if 'main_issue_answer' in record:
+                                st.text_area("", record['main_issue_answer'], height=100, key=f"main_issue_answer_{idx}")
+                            else:
+                                st.write("Main Issue not available")
+                            
                             metrics_data = [
                                 {"label": "Device Category", "value": record.get('device_category', 'N/A')},
                                 {"label": "Duration", "value": f"{record.get('duration_minutes', 'N/A'):.1f} min" if 'duration_minutes' in record else 'N/A'},
-                                {"label": "Main Issue", "value": record.get('main_issue_answer', 'N/A')},
+                                #{"label": "Main Issue", "value": record.get('main_issue_answer', 'N/A')},
                                 {"label": "Resolution", "value": record.get('resolution', 'N/A')},
                                 {"label": "Service Rating", "value": f"{record.get('service_rating_numeric', 'N/A')}/10", "category": "Rating"},
                                 {"label": "Sentiment Score", "value": f"{record.get('sentiment_score', 'N/A')}", "category": record.get('sentiment_category', 'N/A')},
@@ -848,11 +869,15 @@ else:
                         
                         # Column 2 (transcript and reasons)
                         with col2:
+                            
+                            # Display Transcript in a text area
                             st.markdown("### Transcript")
                             if 'transcript' in record:
                                 st.text_area("", record['transcript'], height=300, key=f"transcript_{idx}")
                             else:
                                 st.write("Transcript not available")
+
+                            
                             
                             # Display resolution reason in a text area
                             st.markdown("### Resolution Reason")
