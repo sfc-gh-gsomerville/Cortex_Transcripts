@@ -7,7 +7,7 @@ This project demonstrates a complete end-to-end data pipeline for processing, an
 
 The foundation of the project begins with creating a comprehensive demo database for a medical device support system:
 
-- **Database Structure**: Creates a `Cursor_Demo` database with a `V1` schema to organize all demo objects
+- **Database Structure**: Creates a `MED_DEVICE_TRANSCRIPTS` database with the `CREATE_TRANSCRIPTS` schema to organize all demo data objects
 - **Core Tables**:
   - `SUPPORT_AGENTS`: Stores information about customer support representatives
   - `CUSTOMERS`: Contains customer information
