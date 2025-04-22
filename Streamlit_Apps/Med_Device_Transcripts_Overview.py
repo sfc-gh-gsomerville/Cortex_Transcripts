@@ -18,20 +18,21 @@ st.title("Transcript Detail Dashboard")
 st.markdown("Detailed analysis of customer support transcripts with comprehensive filtering and metrics")
 
 # Initialize Snowflake session
-try:
-    session = get_active_session()
-
-
-    # Display session info for debugging
+with st.sidebar.expander("Connectivity Status"):
     try:
-        session_info = session.sql("SELECT CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_WAREHOUSE()").collect()
-        st.sidebar.success(f"Connected to Snowflake: {session_info[0][0]}.{session_info[0][1]} using {session_info[0][2]}")
-    except:
-        st.sidebar.success("Connected to Snowflake")
-        
-except Exception as e:
-    st.sidebar.error(f"Failed to connect to Snowflake: {e}")
-    st.stop()
+        session = get_active_session()
+    
+    
+        # Display session info for debugging
+        try:
+            session_info = session.sql("SELECT CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_WAREHOUSE()").collect()
+            st.success(f"Connected to Snowflake: {session_info[0][0]}.{session_info[0][1]} using {session_info[0][2]}")
+        except:
+            st.success("Connected to Snowflake")
+            
+    except Exception as e:
+        st.error(f"Failed to connect to Snowflake: {e}")
+        st.stop()
 
 # Function to load data with error handling
 @st.cache_data(ttl=600)
