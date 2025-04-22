@@ -3,7 +3,7 @@
 ## Project Summary
 This project demonstrates a complete end-to-end data pipeline for processing, analyzing, and visualizing customer support conversations for a medical device company. The system creates synthetic data, generates realistic conversation transcripts using AI, processes the data through various stages, and provides analytical insights using Snowflake's Cortex AI capabilities. The project showcases advanced Snowflake features including database management, stored procedures, dynamic tables, AI-powered analysis, and data visualization.
 
-## 1. Data Creation and Initial Setup (create_cursor_demo_tables.md)
+## 1. Data Creation and Initial Setup (create_transactions_demo_tables.md)
 
 The foundation of the project begins with creating a comprehensive demo database for a medical device support system:
 
@@ -24,9 +24,10 @@ The foundation of the project begins with creating a comprehensive demo database
   - Generates realistic conversation transcripts based on context (device type, issue, sentiment)
   - Updates conversation records with the generated transcripts
 
-- **Data Export**:
-  - Creates a simplified table in the Data_Prep schema
-  - Exports conversation data to JSON format for use in demonstrations
+**Key files:**
+- `create_transcripts_demo_tables.md` - Documentation of database setup
+- `create_transcripts_demo_tables.sql` - SQL script for data creation
+- `transcripts_DATA_CREATION.ipynb` - Notebook with creation process
 
 ## 2. Support Conversation Processing (support_conv_convert_to_json.md)
 
@@ -46,6 +47,10 @@ This component establishes a data processing pipeline for handling support conve
   - Orchestrates the entire process from data creation to JSON export
   - Includes error handling and status reporting
   - Supports both single conversation and batch processing modes
+ 
+**Key files:**
+- `support_conv_convert_to_json.md` - Documentation of JSON conversion process
+- `support_conv_convert_to_json.sql` - SQL script for data transformation
 
 ## 3. JSON Data Ingestion (JSON_to_Table.md)
 
@@ -66,6 +71,10 @@ This component handles the ingestion of JSON data into Snowflake tables:
   - Creates a stored procedure to manage the entire pipeline
   - Coordinates task execution, batch processing, and timing
   - Ensures proper sequencing of operations with appropriate delays
+ 
+**Key files:**
+- `JSON_to_Table.md` - Documentation of JSON ingestion
+- `JOSN_to_Table.sql` - SQL Script for JSON ingestion
 
 ## 4. Dynamic Table Creation (Create_Dynamic_Tables.md)
 
@@ -82,6 +91,10 @@ This component transforms the raw JSON data into structured tables for analysis:
   - Automatically refreshes as new data arrives
   - Provides a consistent view of all conversation data
   - Simplifies downstream analysis by presenting clean, structured data
+ 
+**Key files:**
+- `Create_Dynamic_Tables.md` - Documentation of table creation
+- `Create_Dynamis_Tables.sql` - SQL script for creating initial dynamic tables
 
 ## 5. Cortex AI Analysis (Cortex_Analysis.md)
 
@@ -112,6 +125,26 @@ This component leverages Snowflake's Cortex AI capabilities to analyze the conve
   - Creates dynamic tables for various analysis components
   - Combines all analyses into a comprehensive results table
   - Processes JSON fields to extract structured information
+ 
+**Key files:**
+- `Cortex_Analysis.md` - Documentation of AI analysis process
+- `Cortex_Analysis.sql` - SQL script with Cortex function implementations
+
+## 6. Streamlit_Apps
+
+This component provides interactive web applications to visualize the analyzed data:
+
+- **Med_Device_Transcripts_Overview**: Main dashboard with three tabs:
+  - Overview Dashboard - Key metrics and distributions
+  - Agent Metrics - Performance analysis for individual agents
+  - Record Viewer - Detailed exploration of transcripts
+- Interactive filtering by date, agent, sentiment, device category, etc.
+- Comprehensive visualizations using Plotly Express
+
+**Key files:**
+- `Med_Device_Transcripts_Overview.py` - Main Streamlit application
+- `Med_Device_Transcript_Overview_Description.md` - Detailed documentation
+- `transcript_analysis_dashboard.py` - Additional dashboard
 
 ## Project Architecture and Data Flow
 
@@ -124,6 +157,7 @@ The complete project follows this data flow:
 5. **Data Transformation**: Parse and structure the JSON data into clean tables
 6. **AI Analysis**: Apply various Cortex AI functions to extract insights
 7. **Results Consolidation**: Combine all analyses into comprehensive result tables
+8. **Streamlit-in-Snowflake**:  Interactive visualization dashboards
 
 ## Key Technical Features
 
@@ -134,6 +168,26 @@ The complete project follows this data flow:
 - **JSON Processing**: Handles semi-structured data with Snowflake's VARIANT type
 - **Foreign Key Relationships**: Maintains data integrity across related tables
 - **Batch Processing**: Supports efficient processing of multiple records
+- **Python**: Streamlit application development using Pandas and Plotly Express
+
+## Getting Started
+
+1. Execute scripts in the `Create_Transcripts` directory to set up the database
+2. Run the `Data_Prep` scripts to transform and export the data
+3. Execute the `Analytics_Setup` scripts to analyze the conversation content
+4. Copy the python code into a Streamlit-in-Snoflake (SiS) app in Snowflake to visualize and explore the results
+
+For detailed instructions on each step, refer to the markdown documentation files in each directory.
+
+## Use Cases
+
+This project demonstrates solutions for:
+
+- Analyzing customer sentiment across support interactions
+- Identifying common issues for different medical device categories
+- Measuring support agent performance with objective metrics
+- Tracking resolution rates and service quality
+- Creating dashboards for real-time monitoring of support operations
 
 ## Business Value
 
