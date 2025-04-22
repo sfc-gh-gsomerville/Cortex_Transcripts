@@ -34,6 +34,18 @@ with st.sidebar.expander("Connectivity Status"):
         st.error(f"Failed to connect to Snowflake: {e}")
         st.stop()
 
+# Add button to run pipeline stored procedure
+st.sidebar.header("Pipeline Control")
+if st.sidebar.button("Run Transcript Pipeline"):
+    try:
+        with st.sidebar.status("Running transcript pipeline..."):
+            # Execute the stored procedure
+            result = session.sql("CALL MED_DEVICE_TRANSCRIPTS.ANALYTICS.RUN_NEW_TRANSCRIPT_PIPELINE()").collect()
+            st.sidebar.success("Pipeline completed successfully!")
+            st.sidebar.info("Refresh the page to see new data.")
+    except Exception as e:
+        st.sidebar.error(f"Failed to run pipeline: {e}")
+
 # Function to load data with error handling
 @st.cache_data(ttl=600)
 def load_data():
