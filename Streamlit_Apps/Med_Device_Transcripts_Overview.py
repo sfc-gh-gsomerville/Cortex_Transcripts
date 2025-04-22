@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-#import numpy as np
 import plotly.express as px
 from datetime import datetime, timedelta
 from snowflake.snowpark.context import get_active_session
@@ -45,7 +44,6 @@ def load_data():
             SELECT * 
             FROM TRANSCRIPT_ANALYSIS_RESULTS_FINAL 
             ORDER BY START_TIME DESC
-            LIMIT 1000
             """,
             
             # Option 2: With database and schema qualification - adjust if needed
@@ -53,7 +51,6 @@ def load_data():
             SELECT * 
             FROM MED_DEVICE_TRANSCRIPTS.PUBLIC.TRANSCRIPT_ANALYSIS_RESULTS_FINAL 
             ORDER BY START_TIME DESC
-            LIMIT 1000
             """,
             
             # Option 3: Using quoted identifiers
@@ -61,7 +58,6 @@ def load_data():
             SELECT *
             FROM "TRANSCRIPT_ANALYSIS_RESULTS_FINAL"
             ORDER BY "START_TIME" DESC
-            LIMIT 1000
             """
         ]
         
