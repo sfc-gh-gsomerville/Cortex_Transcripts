@@ -18,6 +18,7 @@ st.title("Transcript Detail Dashboard")
 st.markdown("Detailed analysis of customer support transcripts with comprehensive filtering and metrics")
 
 # Initialize Snowflake session
+st.sidebar.header("Connectivity & Debugging")
 with st.sidebar.expander("Connectivity Status"):
     try:
         session = get_active_session()
@@ -33,18 +34,6 @@ with st.sidebar.expander("Connectivity Status"):
     except Exception as e:
         st.error(f"Failed to connect to Snowflake: {e}")
         st.stop()
-
-# Add button to run pipeline stored procedure
-st.sidebar.header("Pipeline Control")
-if st.sidebar.button("Run Transcript Pipeline"):
-    try:
-        with st.sidebar.status("Running transcript pipeline..."):
-            # Execute the stored procedure
-            result = session.sql("CALL MED_DEVICE_TRANSCRIPTS.ANALYTICS.RUN_NEW_TRANSCRIPT_PIPELINE()").collect()
-            st.sidebar.success("Pipeline completed successfully!")
-            st.sidebar.info("Refresh the page to see new data.")
-    except Exception as e:
-        st.sidebar.error(f"Failed to run pipeline: {e}")
 
 # Function to load data with error handling
 @st.cache_data(ttl=600)
@@ -144,6 +133,18 @@ with st.sidebar.expander("Debug Info"):
     else:
         st.write("DataFrame is empty")
 
+# Add button to run pipeline stored procedure
+st.sidebar.header("Pipeline Control")
+if st.sidebar.button("Run Transcript Pipeline"):
+    try:
+        with st.sidebar.status("Running transcript pipeline..."):
+            # Execute the stored procedure
+            result = session.sql("CALL MED_DEVICE_TRANSCRIPTS.ANALYTICS.RUN_NEW_TRANSCRIPT_PIPELINE()").collect()
+            st.sidebar.success("Pipeline completed successfully!")
+            st.sidebar.info("Refresh the page to see new data.")
+    except Exception as e:
+        st.sidebar.error(f"Failed to run pipeline: {e}")
+
 # Sidebar filters
 st.sidebar.header("Filters")
 
@@ -152,10 +153,8 @@ if 'start_time' in df.columns and not df.empty:
     min_date = df['start_time'].min().date()
     max_date = df['start_time'].max().date()
     
-    default_start = max_date - timedelta(days=30)
-    if default_start < min_date:
-        default_start = min_date
-    
+    default_start = min_date
+   
     date_range = st.sidebar.date_input(
         "Date Range",
         value=(default_start, max_date),
@@ -171,7 +170,8 @@ if 'start_time' in df.columns and not df.empty:
         df_filtered = df
 else:
     df_filtered = df
-    
+
+
 # Agent filter
 if 'agent_name' in df.columns and not df.empty:
     agents = ['All'] + sorted(df['agent_name'].unique().tolist())
@@ -220,6 +220,7 @@ if 'service_rating_numeric' in df.columns and not df.empty:
         (df_filtered['service_rating_numeric'] >= selected_rating_range[0]) & 
         (df_filtered['service_rating_numeric'] <= selected_rating_range[1])
     ]
+
 
 # Calculate the service index for each record
 def calculate_service_index(row):
