@@ -1,6 +1,10 @@
 -- Cortex_Analysis.sql
 -- SQL script for analyzing transcript data using Cortex LLM functions
 
+-- Setting Context
+USE DATABASE MED_DEVICE_TRANSCRIPTS;
+USE SCHEMA ANALYTICS;
+
 -- Query using Cortex LLM function to summarize transcripts
 SELECT
   conversation_id,
