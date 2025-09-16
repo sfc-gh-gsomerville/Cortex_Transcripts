@@ -1,6 +1,10 @@
 -- Create_Dynamic_Tables.sql
 -- SQL script for creating dynamic tables in the analytics setup
 
+-- Set worksheet Context
+USE DATABASE MED_DEVICE_TRANSCRIPTS;
+USE SCHEMA ANALYTICS;
+
 -- Show top 10 records from RAW_JSON_DATA_INITIAL
 SELECT TOP 10 *
 FROM RAW_JSON_DATA_INITIAL
