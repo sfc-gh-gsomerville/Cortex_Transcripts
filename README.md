@@ -13,7 +13,7 @@ This project demonstrates a complete end-to-end data pipeline for processing, an
 5. In the "Analytics_Setup" folder, execute the script `Create_Dynamic_Tables.sql`
 6. In the "Analytics_Setup" folder, execute the script `Cortex_Analysis.sql`
 7. In the "Streamlit_Apps" folder, copy the python code in `Med_Device_Transcripts_Overview.py` into a Streamlit-in-Snoflake (SiS) app in Snowflake to visualize and explore the results
-8. If you would like to review AISQL and Cortex LLM functions, as well as the creation of Dynamic Tables in a Snowflake Notebook, be sure to download the `MED_TECH_TRANSCRIPTS_CORTEX_ANALYSIS_AISQL.ipynb` file from the "MED_TRANSCRIPTIONS_CORTEX_ANALYSIS" folder to your local machine and then open a new notebook in Snowflake from a .jpynb file!
+8. If you would like to review AISQL and Cortex LLM functions, as well as the creation of Dynamic Tables in a Snowflake Notebook, be sure to download the `MED_TECH_TRANSCRIPTS_CORTEX_ANALYSIS_AISQL.ipynb` file from the "Analytics_Setup/MED_TRANSCRIPTIONS_CORTEX_ANALYSIS" folder to your local machine and then open a new notebook in Snowflake from a .jpynb file!
 
 For detailed instructions on each step, refer to the markdown documentation files in each directory.
 
