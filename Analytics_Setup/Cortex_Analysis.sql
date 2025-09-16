@@ -274,3 +274,9 @@ AS
 
 -- Query the combined dynamic table
 SELECT * FROM TRANSCRIPT_ANALYSIS_RESULTS_FINAL LIMIT 10;
+
+/* Create or replace the existing table with all transcripts and then copy over all records from the Dynamic Table.  
+This has to be done bacause Cortex Search can not be used ontop of a Dynamic Table
+***NOTE*** This query must be run manually to refreshed each time new records are generated (I haven't built an update pipline yet!)*/
+CREATE OR REPLACE TABLE MED_DEVICE_TRANSCRIPTS.ANALYTICS.TRANSCRIPT_ANALYSIS_RESULTS_FINAL_TBL AS 
+SELECT * FROM MED_DEVICE_TRANSCRIPTS.ANALYTICS.TRANSCRIPT_ANALYSIS_RESULTS_FINAL;
