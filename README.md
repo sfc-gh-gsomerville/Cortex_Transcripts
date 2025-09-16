@@ -3,6 +3,19 @@
 ## Project Summary
 This project demonstrates a complete end-to-end data pipeline for processing, analyzing, and visualizing customer support conversations for a medical device company. The system creates synthetic data, generates realistic conversation transcripts using AI, processes the data through various stages, and provides analytical insights using Snowflake's Cortex AI capabilities. The project showcases advanced Snowflake features including database management, stored procedures, dynamic tables, AI-powered analysis, and data visualization.
 
+## Getting Started
+
+1. In Snowflake, copy the SQL script in the file `Account_Setup.sql` and execute the script
+   (Note:  After running this script you will be able to create new workspce from this GIT repository and executed the following SQL scripts from directly within Snowflake Workspaces
+2. In the "Create_Transcripts" folder, execute the script `create_transcripts_demo_table.sql`
+3. In the "Data_Prep" folder, execute the script `create_transcripts_demo_table.sql`
+4. In the "Analytics_Setup" folder, execute the script `JSON_to_Table.sql`
+5. In the "Analytics_Setup" folder, execute the script `Create_Dynamic_Tables.sql`
+6. In the "Analytics_Setup" folder, execute the script `Cortex_Analysis.sql`
+7. In the "Streamlit_Apps" folder, copy the python code in `Med_Device_Transcripts_Overview.py` into a Streamlit-in-Snoflake (SiS) app in Snowflake to visualize and explore the results
+
+For detailed instructions on each step, refer to the markdown documentation files in each directory.
+
 ## 1. Data Creation and Initial Setup (create_transactions_demo_tables.md)
 
 The foundation of the project begins with creating a comprehensive demo database for a medical device support system:
@@ -169,15 +182,6 @@ The complete project follows this data flow:
 - **Foreign Key Relationships**: Maintains data integrity across related tables
 - **Batch Processing**: Supports efficient processing of multiple records
 - **Python**: Streamlit application development using Pandas and Plotly Express
-
-## Getting Started
-
-1. Execute scripts in the `Create_Transcripts` directory to set up the database
-2. Run the `Data_Prep` scripts to transform and export the data
-3. Execute the `Analytics_Setup` scripts to analyze the conversation content
-4. Copy the python code into a Streamlit-in-Snoflake (SiS) app in Snowflake to visualize and explore the results
-
-For detailed instructions on each step, refer to the markdown documentation files in each directory.
 
 ## Use Cases
 
