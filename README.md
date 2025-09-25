@@ -8,7 +8,7 @@ This project demonstrates a complete end-to-end data pipeline for processing, an
 1. In Snowflake, copy the SQL script in the file `Account_Setup.sql` and execute the script
    (Note:  After running this script you will be able to create new workspce from this GIT repository and executed the following SQL scripts from directly within Snowflake Workspaces
 2. In the "Create_Transcripts" folder, execute the script `create_transcripts_demo_table.sql`
-3. In the "Data_Prep" folder, execute the script `create_transcripts_demo_table.sql`
+3. In the "Data_Prep" folder, execute the script `support_conv_convert_to_json.sql`
 4. In the "Analytics_Setup" folder, execute the script `JSON_to_Table.sql`
 5. In the "Analytics_Setup" folder, execute the script `Create_Dynamic_Tables.sql`
 6. In the "Analytics_Setup" folder, execute the script `Cortex_Analysis.sql`
