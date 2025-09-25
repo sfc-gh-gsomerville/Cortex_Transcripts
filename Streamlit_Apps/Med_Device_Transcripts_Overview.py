@@ -809,7 +809,7 @@ else:
             st.subheader("Select Date Range for Records")
             record_date_range = st.date_input(
                 "Date Range",
-                value=(min_date, min(min_date + timedelta(days=7), max_date)),
+                value=(min_date, max_date),
                 min_value=min_date,
                 max_value=max_date
             )
