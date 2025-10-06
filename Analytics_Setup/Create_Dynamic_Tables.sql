@@ -1,6 +1,9 @@
 -- Create_Dynamic_Tables.sql
 -- SQL script for creating dynamic tables in the analytics setup
 
+-- Set Context to ACCOUNTADMIN
+USE ROLE ACCOUNTADMIN;
+
 -- Set worksheet Context
 USE DATABASE MED_DEVICE_TRANSCRIPTS;
 USE SCHEMA ANALYTICS;
