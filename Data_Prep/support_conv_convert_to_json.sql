@@ -1,5 +1,8 @@
 -- Reference SQL from create_cursor_demo_table.sql that was used to create and populate the SUPPORT_CONVERSATIONS table
 
+-- Set Context to ACCOUNTADMIN
+USE ROLE ACCOUNTADMIN;
+
 -- Create DATA_PREP schema in MED_DEVICE_TRANSCRIPTS if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS MED_DEVICE_TRANSCRIPTS.DATA_PREP;
 
