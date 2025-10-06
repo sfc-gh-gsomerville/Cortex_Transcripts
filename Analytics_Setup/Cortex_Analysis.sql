@@ -1,6 +1,9 @@
 -- Cortex_Analysis.sql
 -- SQL script for analyzing transcript data using Cortex LLM functions
 
+-- Set Context to ACCOUNTADMIN
+USE ROLE ACCOUNTADMIN;
+
 -- Setting Context
 USE DATABASE MED_DEVICE_TRANSCRIPTS;
 USE SCHEMA ANALYTICS;
